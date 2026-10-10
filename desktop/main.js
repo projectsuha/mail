@@ -5,8 +5,16 @@ const auth = require('./auth');
 const path = require('path');
 const fs = require('fs');
 
-const APP_URL = 'https://snnerdogan98.github.io/mail/';
+const APP_URL = 'https://projectsuha.github.io/mail/';
 const APP_ORIGIN = new URL(APP_URL).origin;
+// Bir adres gerçekten bizim uygulamamız mı? Tam köken + /mail/ yolu karşılaştırılır.
+// ("https://projectsuha.github.io.baskasi.com" gibi benzer adresler ve aynı hesabın başka siteleri kabul edilmez)
+const isApp = u => { try { const x = new URL(u); return x.origin === APP_ORIGIN && x.pathname.startsWith('/mail/'); } catch { return false; } };
+const isInner = u => /^(about:(blank|srcdoc)|blob:)/i.test(u || '') || isApp(u);
+// Giriş için izin verilen Google izinleri (sayfa başka izin isteyemesin)
+const ALLOWED_SCOPES = new Set(['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/gmail.settings.basic',
+  'https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/drive.file']);
+const cleanScopes = s => String(s || '').split(/\s+/).filter(x => ALLOWED_SCOPES.has(x)).join(' ');
 
 
 app.setAppUserModelId('com.snnerdogan98.mail'); // görev çubuğunda kendi simgesi
@@ -66,12 +74,25 @@ function createWindow() {
   });
   // Aynı pencerede sadece uygulama açılır. Google girişi yakalanıp tarayıcıda yapılır,
   // diğer her şey varsayılan tarayıcıda açılır.
-  win.webContents.on('will-navigate', (e, url) => {
-    if (url.startsWith(APP_ORIGIN)) return;
+  const guard = (e, url) => {
+    if (isApp(url)) return;
     if (OAUTH.test(url)) { e.preventDefault(); webLogin(url); return; }
     e.preventDefault();
     if (/^(https?|mailto|tel):/i.test(url)) shell.openExternal(url);
+  };
+  win.webContents.on('will-navigate', guard);
+  win.webContents.on('will-redirect', guard);
+  // Sayfa içindeki çerçeveler (mail gövdesi, PDF önizleme) başka siteye gidemez
+  win.webContents.on('will-frame-navigate', e => {
+    if (e.isMainFrame || isInner(e.url)) return;
+    e.preventDefault();
+    if (/^(https?|mailto|tel):/i.test(e.url)) shell.openExternal(e.url);
   });
+  // Sayfaların isteyebileceği izinler: yalnızca bildirim, panoya yazma ve tam ekran
+  const OK_PERMS = new Set(['notifications', 'clipboard-sanitized-write', 'fullscreen']);
+  const ses = win.webContents.session;
+  ses.setPermissionRequestHandler((wc, perm, cb, d) => cb(OK_PERMS.has(perm) && isApp(d?.requestingUrl || wc.getURL())));
+  ses.setPermissionCheckHandler((wc, perm, origin) => OK_PERMS.has(perm) && origin === APP_ORIGIN);
 
   // Sağ tık: yazım önerileri ve kopyala/yapıştır
   win.webContents.on('context-menu', (_e, p) => {
@@ -109,9 +130,10 @@ Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Mail', submenu: [
 ] }]));
 
 // Sayfadan gelen giriş istekleri (sadece kendi sitemizden)
-const fromApp = e => (e.senderFrame?.url || '').startsWith(APP_ORIGIN);
+// Yalnızca ana penceredeki kendi sitemizden gelen istekler (çerçeveler ve benzer adresli siteler değil)
+const fromApp = e => !!win && e.sender === win.webContents && e.senderFrame === win.webContents.mainFrame && isApp(e.senderFrame?.url);
 ipcMain.handle('auth:get', e => fromApp(e) ? auth.getToken() : null);
-ipcMain.handle('auth:login', (e, scopes, hint) => fromApp(e) ? auth.login(String(scopes), hint ? String(hint) : '', focusWin) : null);
+ipcMain.handle('auth:login', (e, scopes, hint) => fromApp(e) ? auth.login(cleanScopes(scopes) || 'openid email', hint ? String(hint).slice(0, 200) : '', focusWin) : null);
 ipcMain.handle('auth:logout', e => fromApp(e) ? auth.logout() : null);
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });

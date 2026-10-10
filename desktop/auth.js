@@ -10,7 +10,7 @@ let CFG = {};
 try { CFG = JSON.parse(fs.readFileSync(path.join(__dirname, 'auth-config.json'), 'utf8')); } catch {}
 
 const tokenFile = () => path.join(app.getPath('userData'), 'oturum.bin');
-let access = null; // { token, exp, scope }
+let access = null; // { token, exp, scope, idToken }
 
 function saveRefresh(rt) {
   const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(rt) : Buffer.from('plain:' + rt);
@@ -33,7 +33,9 @@ async function tokenRequest(params) {
   if (!res.ok) { const e = new Error(j.error_description || j.error || ('HTTP ' + res.status)); e.code = j.error; throw e; }
   return j;
 }
-const keep = j => (access = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, scope: j.scope || '' });
+// Google kimlik kartı (id_token) da saklanır: site, zamanlayıcıya kim olduğunu Gmail anahtarı yerine bununla kanıtlar
+const keep = j => (access = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, scope: j.scope || '', idToken: j.id_token || (access && access.idToken) || '' });
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Kayıtlı oturumdan yeni erişim anahtarı al (gerekirse)
 async function getToken() {
@@ -72,7 +74,7 @@ function login(scopes, hint, onDone) {
         keep(j);
         res.end(page('Giriş tamam', 'Mail programına dönebilirsin. Bu sekmeyi kapatabilirsin.'));
         finish(); resolve(access); onDone && onDone();
-      } catch (e) { res.end(page('Giriş tamamlanamadı', String(e.message))); finish(); reject(e); }
+      } catch (e) { res.end(page('Giriş tamamlanamadı', escHtml(e.message))); finish(); reject(e); }
     });
     server.on('error', reject);
   });
