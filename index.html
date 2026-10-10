@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; font-src 'self' https: data:; media-src 'self' https: data: blob:; connect-src 'self' https://*.googleapis.com https://script.google.com https://script.googleusercontent.com; frame-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mail</title>
 <meta name="theme-color" content="#26282c">
@@ -15,19 +16,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="cam.css" id="css-cam">
 <link rel="stylesheet" href="koyu.css" id="css-koyu" media="not all">
-<script>
-// Mail Yönetici'nin Google girişi buraya döner; yönetici sayfasına aktar
-if (/[#&]state=yon-/.test(location.hash)) location.replace('yonetici.html' + location.hash);
-if (/[#&]state=not-/.test(location.hash)) location.replace('notlar.html' + location.hash);
-// Görünümü sayfa çizilmeden önce uygula (açılışta renk sıçraması olmasın)
-function applyTheme(t) {
-  var cam = document.getElementById('css-cam'), koyu = document.getElementById('css-koyu');
-  cam.media = t === 'flat' ? 'not all' : 'all';
-  koyu.media = t === 'dark' ? 'all' : t === 'auto' ? '(prefers-color-scheme: dark)' : 'not all';
-  document.documentElement.dataset.theme = t;
-}
-try { applyTheme(JSON.parse(localStorage.getItem('theme')) || 'light'); } catch (e) { applyTheme('light'); }
-</script>
+<script src="basla.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -51,6 +40,7 @@ try { applyTheme(JSON.parse(localStorage.getItem('theme')) || 'light'); } catch 
 <script src="feedback.js"></script>
 <script src="about.js"></script>
 <script src="pdfconvert.js"></script>
+<script src="files.js"></script>
 <script src="keys.js"></script>
 <script src="settings.js"></script>
 </body>

@@ -12,7 +12,7 @@ const PDF_KINDS = {
   word: { ext: ['docx', 'docm', 'doc', 'odt', 'rtf'], g: 'application/vnd.google-apps.document', ic: 'W',
     drive: 'Sayfa düzeni, yazı tipleri ve tablolar olduğu gibi korunur.' },
   excel: { ext: ['xlsx', 'xlsm', 'xls', 'ods', 'csv'], g: 'application/vnd.google-apps.spreadsheet', ic: 'X',
-    drive: 'Tablolar, renkler, sayı biçimleri ve grafikler korunur; her sayfa ayrı çıkar.' },
+    drive: 'Grafikler ve resimler de çıkar. Excel’deki yatay sayfa ayarı korunmayabilir; geniş tablolar dikey sayfaya bölünebilir.' },
   slide: { ext: ['pptx', 'ppsx', 'ppt', 'pps', 'odp'], g: 'application/vnd.google-apps.presentation', ic: 'P',
     drive: 'Her slayt bir sayfa olur; tasarım, resimler ve tablolar korunur.' }
 };
@@ -22,7 +22,7 @@ const PDF_MIME = { docx: 'application/vnd.openxmlformats-officedocument.wordproc
   xls: 'application/vnd.ms-excel', ods: 'application/vnd.oasis.opendocument.spreadsheet', csv: 'text/csv',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppsx: 'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
   ppt: 'application/vnd.ms-powerpoint', pps: 'application/vnd.ms-powerpoint', odp: 'application/vnd.oasis.opendocument.presentation' };
-let pdfJob = null, pdfUrl = null, pdfDemoDrive = false;
+let pdfJob = null, pdfUrl = null, pdfBlob = null, pdfDemoDrive = false;
 
 const pdfExt = name => (name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
 const pdfName = name => name.replace(/\.[^.]+$/, '') + '.pdf';
@@ -61,25 +61,28 @@ const pdfFileRow = (job, extra = '') => `<div class="pdf-file"><span class="pdf-
 function pdfChoose(note = '') {
   const job = pdfJob, local = pdfLocalOk(job.filename), kind = pdfKind(job.filename);
   const localText = local ? (kind === 'excel'
-      ? 'Dosya hiçbir yere gönderilmez. Sayfalar tablo olarak açılır, “PDF olarak kaydet” ile kaydedersin. Grafikler ve resimler çıkmaz.'
+      ? 'Geniş tablolar kendiliğinden yatay sayfaya, tam genişlikte sığdırılır. Dosya hiçbir yere gönderilmez. Grafikler ve resimler çıkmaz.'
       : 'Dosya hiçbir yere gönderilmez. Önizleme açılır, “PDF olarak kaydet” ile kaydedersin. Sade belgeler için uygundur.')
     : kind === 'slide' ? 'PowerPoint dosyaları yalnızca Google Drive ile çevrilebilir.'
     : 'Bu dosya türü (eski biçim) yalnızca Google Drive ile çevrilebilir.';
+  // Excel'de yerel yol sayfa yönünü kendisi seçtiği için önerilen o; diğerlerinde Drive
+  const localFirst = local && kind === 'excel', tag = '<em>Önerilen</em>';
+  const drive = `<button class="pdf-opt" data-action="pdf-drive">
+      <span class="pdf-opt-ic">${IC.spark}</span>
+      <div><b>Google Drive ile çevir ${localFirst ? '' : tag}</b><span>${PDF_KINDS[kind].drive} İlk seferde Google bir kez izin sorar. Dosya Drive'ında birkaç saniyeliğine açılır, çevrilince silinir.</span></div>
+    </button>`;
+  const here = `<button class="pdf-opt" data-action="pdf-local" ${local ? '' : 'disabled'}>
+      <span class="pdf-opt-ic">${IC.shield}</span>
+      <div><b>Bu cihazda çevir ${localFirst ? tag : ''}</b><span>${localText}</span></div>
+    </button>`;
   pdfSheet(`${pdfFileRow(job)}
     ${note ? `<p class="pdf-note">${note}</p>` : ''}
-    <button class="pdf-opt" data-action="pdf-drive">
-      <span class="pdf-opt-ic">${IC.spark}</span>
-      <div><b>Google Drive ile çevir <em>Önerilen</em></b><span>${PDF_KINDS[kind].drive} İlk seferde Google bir kez izin sorar. Dosya Drive'ında birkaç saniyeliğine açılır, çevrilince silinir.</span></div>
-    </button>
-    <button class="pdf-opt" data-action="pdf-local" ${local ? '' : 'disabled'}>
-      <span class="pdf-opt-ic">${IC.shield}</span>
-      <div><b>Bu cihazda çevir</b><span>${localText}</span></div>
-    </button>`);
+    ${localFirst ? here + drive : drive + here}`);
 }
 
 async function pdfStart(job) {
   pdfJob = job;
-  if (driveOk()) return pdfDrive();
+  if (driveOk() && !(pdfKind(job.filename) === 'excel' && pdfLocalOk(job.filename))) return pdfDrive();
   pdfChoose();
 }
 
@@ -127,10 +130,10 @@ async function pdfAskDrive() {
     return driveOk() ? pdfDrive() : pdfChoose('Google, Drive iznini vermedi. İstersen bu cihazda çevirebilirsin.');
   }
   store.set('pdfPending', { mid: job.mid, attId: job.attId, filename: job.filename, mimeType: job.mimeType, size: job.size, t: Date.now() });
-  const state = 'pdf-' + Math.random().toString(36).slice(2);
+  const state = 'pdf-' + rnd();
   store.set('oauthState', state);
-  const p = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: Auth.redirectUri(), response_type: 'token',
-    scope: scopes, include_granted_scopes: 'true', state });
+  const p = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: Auth.redirectUri(), response_type: 'token id_token',
+    scope: scopes, include_granted_scopes: 'true', state, nonce: Auth.nonce() });
   if (store.get('email')) p.set('login_hint', store.get('email'));
   location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
 }
@@ -144,6 +147,7 @@ async function pdfAskDrive() {
   store.del('oauthState');
   if (ok && h.get('access_token')) {
     store.set('auth', { token: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000, scope: h.get('scope') || '' });
+    keepIdToken(h.get('id_token'), store.get('oauthNonce')); store.del('oauthNonce');
   } else {
     const p = store.get('pdfPending');
     if (p) store.set('pdfPending', { ...p, denied: true });
@@ -155,6 +159,7 @@ async function pdfResume() {
   if (!p) return;
   store.del('pdfPending');
   if (Date.now() - p.t > 15 * 60e3) return;
+  if (p.act === 'save') return typeof fileSaveResume === 'function' && fileSaveResume(p);   // "Drive'a kaydet" için izin alınmıştı
   pdfJob = p;
   if (p.denied || !driveOk()) return pdfChoose('Drive izni verilmedi. İstersen bu cihazda çevirebilirsin.');
   pdfDrive();
@@ -199,16 +204,28 @@ async function driveConvert(bytes, name, mime) {
 
 function pdfShowResult(blob, how) {
   if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-  pdfUrl = URL.createObjectURL(blob);
+  pdfUrl = URL.createObjectURL(blob); pdfBlob = blob;
   const name = pdfName(pdfJob.filename);
+  const canMail = typeof pdfAttachTo === 'function' && S.thread?.messages.some(x => x.id === pdfJob.mid);
   const touch = navigator.pdfViewerEnabled === false || /iPhone|iPad|Android/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   pdfSheet(`<div class="pdf-file done"><span class="pdf-doc pdf">PDF</span><div><b>${esc(name)}</b><small>${fmtSize(blob.size)} · ${how}</small></div></div>
     <div class="pdf-actions">
       <a class="btn primary" href="${pdfUrl}" download="${esc(name)}">${IC.check}İndir</a>
       <a class="btn" href="${pdfUrl}" target="_blank" rel="noopener">${IC.file}Aç</a>
+      ${canMail ? `<button class="btn" data-action="pdf-reply">${IC.reply}Yanıtla, PDF ekli</button><button class="btn" data-action="pdf-fwd">${IC.forward}İlet</button>` : ''}
     </div>
     ${touch ? '' : `<iframe class="pdf-frame" src="${pdfUrl}#view=FitH" title="PDF önizleme"></iframe>`}`, { wide: !touch });
 }
+
+// Excel tabloları gerçek sayfa genişliğinde çizilir; dar ekranda (telefon) bütün sayfa ekrana sığacak kadar küçültülür
+function dxFit() {
+  for (const pg of document.querySelectorAll('.dx-page.fit')) {
+    pg.style.zoom = '';
+    const avail = pg.parentElement.clientWidth - 24, w = pg.offsetWidth;
+    if (w > avail) pg.style.zoom = Math.max(avail / w, 0.55).toFixed(3);   // çok küçülmesin; gerekirse yana kaydırılır
+  }
+}
+addEventListener('resize', () => requestAnimationFrame(dxFit));
 
 /* ── 2) Bu cihazda: .docx → HTML önizleme → yazdır / PDF olarak kaydet ── */
 async function pdfLocal() {
@@ -218,9 +235,10 @@ async function pdfLocal() {
     const doc = await (pdfKind(job.filename) === 'excel' ? xlsxToHtml : docxToHtml)(await pdfBytes(job));
     if (pdfJob !== job) return;
     job.doc = doc;
-    pdfSheet(`<div class="dx-wrap"><div class="dx-page" style="--pw:${doc.page.w}mm;--pm:${doc.page.ml}mm">${doc.html}</div></div>
+    pdfSheet(`<div class="dx-wrap"><div class="dx-page${doc.html.includes('xl-doc') ? ' fit' : ''}" style="--pw:${doc.page.w}mm;--pm:${doc.page.ml}mm">${doc.html}</div></div>
       <p class="pdf-hint">Yazdırma penceresinde hedef olarak <b>PDF olarak kaydet</b>’i seç. Dosya cihazından çıkmaz.${driveOk() || DESKTOP ? '' : ' Düzen bozuk görünürse <a href="#" data-action="pdf-drive">Google Drive ile çevir</a>.'}</p>`,
       { wide: true, head: `<button class="btn primary" data-action="pdf-print">${IC.check}PDF olarak kaydet</button>` });
+    dxFit();
   } catch (e) {
     if (pdfJob !== job) return;
     pdfChoose(`Belge bu cihazda açılamadı: ${esc(e.message)}`);
@@ -351,7 +369,7 @@ async function docxToHtml(bytes) {
       else if (n === 'hyperlink') {
         const href = rels[c.getAttributeNS(R, 'id')]?.t;
         const inner = await runs(c);
-        out += href && /^(https?:|mailto:)/i.test(href) ? `<a href="${esc(href)}">${inner}</a>` : inner;
+        out += href && /^(https?:|mailto:)/i.test(href) ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${inner}</a>` : inner;
       }
       else if (['ins', 'smartTag', 'fldSimple', 'customXml', 'bdo', 'dir'].includes(n)) out += await runs(c);
       else if (n === 'sdt') out += await runs(kid(c, 'sdtContent') || c);
@@ -524,7 +542,7 @@ async function xlsxToHtml(bytes) {
   const colNum = ref => { let n = 0; for (const ch of ref.match(/^[A-Z]+/)[0]) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
   const rowNum = ref => +ref.match(/\d+/)[0] - 1;
 
-  let html = '';
+  let html = '', landscape = false;
   const sheets = all(wb, 'sheet').filter(sh => !/hidden/.test(sh.getAttribute('state') || ''));
   for (const [si, sh] of sheets.entries()) {
     const target = rels[sh.getAttributeNS(R, 'id') || sh.getAttribute('r:id')] || '';
@@ -558,6 +576,8 @@ async function xlsxToHtml(bytes) {
     for (const col of all(doc, 'col')) for (let i = +col.getAttribute('min') - 1; i < Math.min(+col.getAttribute('max'), maxC + 1); i++)
       if (col.getAttribute('width')) widths[i] = col.getAttribute('hidden') === '1' || col.getAttribute('hidden') === 'true' ? 0 : +col.getAttribute('width');
     const total = widths.reduce((a, b) => a + b, 0) || 1;
+    // Excel'de yatay seçilmişse ya da tablo dikey A4'e sığmayacak kadar genişse yatay sayfa
+    if (all(doc, 'pageSetup')[0]?.getAttribute('orientation') === 'landscape' || total > 95) landscape = true;
     let t = `<colgroup>${widths.map(w => `<col style="width:${(w / total * 100).toFixed(2)}%">`).join('')}</colgroup>`;
     for (let r = 0; r <= maxR; r++) {
       t += '<tr>';
@@ -577,7 +597,7 @@ async function xlsxToHtml(bytes) {
     html += `${si ? '<span class="dx-pb"></span>' : ''}${sheets.length > 1 ? `<h2 class="xl-name">${esc(sh.getAttribute('name'))}</h2>` : ''}<table class="xl">${t}</table>`;
   }
   if (!html) throw new Error('dosyada gösterilecek veri yok');
-  return { html: `<div class="dx xl-doc">${html}</div>`, page: { w: 297, h: 210, mt: 12, mr: 12, mb: 12, ml: 12 } };
+  return { html: `<div class="dx xl-doc">${html}</div>`, page: landscape ? { w: 297, h: 210, mt: 12, mr: 12, mb: 12, ml: 12 } : { w: 210, h: 297, mt: 15, mr: 12, mb: 15, ml: 12 } };
 }
 
 function pdfClose() {
@@ -594,5 +614,7 @@ Object.assign(ACTIONS, {
   'pdf-drive': (el, e) => { e?.preventDefault?.(); pdfDrive(); },
   'pdf-local': () => pdfLocal(),
   'pdf-print': () => pdfPrint(),
+  'pdf-reply': () => pdfBlob && pdfAttachTo('reply', pdfBlob, pdfName(pdfJob.filename)),
+  'pdf-fwd': () => pdfBlob && pdfAttachTo('forward', pdfBlob, pdfName(pdfJob.filename)),
   'pdf-close': () => pdfClose()
 });

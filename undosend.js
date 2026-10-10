@@ -34,7 +34,7 @@ async function reallySend(id) {
     if (item.init.threadId && S.threadId === item.init.threadId) openThread(item.init.threadId);
   } catch (err) {
     if (err instanceof AuthError) return;
-    toast('Gönderilemedi: ' + err.message, [['Tekrar aç', () => reopenCompose(item)]], 15000);
+    toast('Gönderilemedi: ' + esc(err.message), [['Tekrar aç', () => reopenCompose(item)]], 15000);
   }
 }
 
@@ -48,7 +48,7 @@ function undoSend(id) {
 }
 
 function reopenCompose({ msg, init }) {
-  openCompose({ ...init, to: msg.to, cc: msg.cc || '', subject: msg.subject, body: msg.body, noSig: true });
+  openCompose({ ...init, to: msg.to, cc: msg.cc || '', subject: msg.subject, body: msg.body, noSig: true, atts: msg.attachments || [] });
 }
 
 // Uygulama kapatılırken ya da arka plana alınırken bekleyen postaları hemen gönder (kaybolmasın)

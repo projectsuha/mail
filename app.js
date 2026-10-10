@@ -4,10 +4,11 @@
  */
 'use strict';
 
-const APP_VERSION = 'V0.6';
+const APP_VERSION = 'V0.7';
 const CLIENT_ID = (window.MAIL_CONFIG && window.MAIL_CONFIG.CLIENT_ID || '').trim();
 const DEMO = new URLSearchParams(location.search).has('demo');
 const SCOPES = [
+  'openid', 'email',                                        // kimlik kartı (zamanlayıcıya kim olduğunu kanıtlamak için)
   'https://www.googleapis.com/auth/gmail.modify',          // okuma, etiketleme, gönderme
   'https://www.googleapis.com/auth/gmail.settings.basic',  // filtre oluşturma
   'https://www.googleapis.com/auth/calendar.events'        // takvim etkinlikleri
@@ -159,14 +160,19 @@ function phoneE164(s) {
 const fmtPhone = e => e.replace(/^\+90(\d{3})(\d{3})(\d{2})(\d{2})$/, '+90 $1 $2 $3 $4');
 
 function linkify(text) {
-  return esc(text)
-    .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
-    .replace(PHONE_RE, m => { const e = phoneE164(m); return e ? `<a href="tel:${e}">${m}</a>` : m; });
+  // Önce linkleri ayır; telefon numarası yalnızca link dışındaki yazıda aranır (link içine ikinci link girmesin)
+  return esc(text).split(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g).map((part, i) => i % 2
+    ? `<a href="${part}" target="_blank" rel="noopener noreferrer">${part}</a>`
+    : part.replace(PHONE_RE, m => { const e = phoneE164(m); return e ? `<a href="tel:${e}">${m}</a>` : m; })).join('');
 }
 function htmlToText(html) {
   const d = new DOMParser().parseFromString(html, 'text/html');
-  d.querySelectorAll('style,script,head').forEach(n => n.remove());
-  return (d.body.innerText || d.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  d.querySelectorAll('style,script,head,title').forEach(n => n.remove());
+  // Ayrık belgede düzen hesaplanmadığı için satır sonlarını elle ekle (yoksa paragraflar birbirine yapışır)
+  d.querySelectorAll('br').forEach(n => n.replaceWith('\n'));
+  d.querySelectorAll('p,div,h1,h2,h3,h4,h5,h6,li,tr,table,blockquote,section,article,header,footer,center,pre,hr').forEach(n => { n.before('\n'); n.after('\n'); });
+  d.querySelectorAll('td,th').forEach(n => n.after(' '));
+  return (d.body.textContent || '').replace(/[ \t\u00a0]+\n/g, '\n').replace(/\n[ \t\u00a0]+/g, '\n').replace(/[ \t\u00a0]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /* ───────────── Simgeler ───────────── */
@@ -222,15 +228,39 @@ const tagChip = (l, text) => {
   const bg = /^#[0-9a-f]{6}$/i.test(l.color || '') ? l.color : '#aab0b8';
   return `<span class="tchip" style="--bg:${bg};--ink:${inkFor(bg)}" title="${esc(l.name)}">${esc(text)}</span>`;
 };
-const dot = color => `<span class="ldot" style="--c:${esc(color || '#8a8a8a')}"></span>`;
+const safeColor = c => /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#8a8a8a';
+const dot = color => `<span class="ldot" style="--c:${safeColor(color)}"></span>`;
 const tagIcon = color => `<svg class="tagic" viewBox="0 0 20 14" width="18" height="13"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11l5 6-5 6h-11A1.5 1.5 0 0 1 1 11.5z" fill="${esc(color || '#8a8a8a')}"/></svg>`;
 
 /* ───────────── Google girişi (OAuth, tarayıcı içi) ───────────── */
 
 // Windows programı (Electron) içinde mi çalışıyoruz? Orada giriş programın kendisi tarafından yapılır.
 const DESKTOP = !!(window.mailDesktop && !DEMO);
-const keepDesktopToken = t => { if (t?.token) store.set('auth', { token: t.token, exp: t.exp, scope: t.scope || '' }); return t?.token || null; };
+// Google kimlik kartı (ID token): yalnızca "bu kişi kim" bilgisini taşır, maile erişim vermez.
+// Zamanlayıcıya kimlik kanıtı olarak bu gönderilir (erişim anahtarı değil).
+const rnd = (n = 16) => [...crypto.getRandomValues(new Uint8Array(n))].map(b => b.toString(16).padStart(2, '0')).join('');   // tahmin edilemez rastgele değer (giriş doğrulaması için)
+const jwtBody = t => { try { return JSON.parse(new TextDecoder().decode(b64urlToBytes(t.split('.')[1]))); } catch { return null; } };
+function keepIdToken(idt, nonce) {
+  const b = idt && jwtBody(idt);
+  // Aynı Google projesinin istemcisi olmalı (web sitesi ya da Windows programı)
+  const proj = CLIENT_ID.split('-')[0];
+  if (!b || (nonce && b.nonce !== nonce) || !proj || !String(b.aud || '').startsWith(proj + '-')) return false;
+  store.set('idt', { t: idt, exp: b.exp * 1000 });
+  return true;
+}
+const idToken = () => { const x = store.get('idt'); return x && x.exp > Date.now() + 30000 ? x.t : null; };
+const keepDesktopToken = t => { if (t?.token) store.set('auth', { token: t.token, exp: t.exp, scope: t.scope || '' }); if (t?.idToken) keepIdToken(t.idToken); return t?.token || null; };
 
+// Çıkış yapınca bu cihazda kişisel hiçbir şey kalmasın (ortak bilgisayar için).
+// Kalanlar yalnızca görünüm ve kullanım tercihleri.
+const KEEP_KEYS = ['theme', 'undoSend', 'keyMap', 'keysOn', 'keyGoPrefix', 'ctxMenu', 'imgProxyAll', 'blockTrackers', 'calMode', 'collapsed',
+  'unreadBadge', 'notifyMail', 'trkCount'];
+function wipePersonal() {
+  try {
+    for (const k of Object.keys(localStorage)) if (!KEEP_KEYS.includes(k) && k !== 'yonTab') localStorage.removeItem(k);   // Yönetici oturumu da
+    sessionStorage.clear();
+  } catch {}
+}
 const Auth = {
   // Programda: kayıtlı oturumdan yeni anahtar al (tarayıcı açılmaz)
   async desktopRefresh() {
@@ -249,18 +279,19 @@ const Auth = {
         .then(t => { keepDesktopToken(t); start(); })
         .catch(e => showLogin(/zaman|access_denied/.test(e.message) ? 'Giriş tamamlanmadı, tekrar dene.' : 'Giriş yapılamadı: ' + e.message));
     }
-    const state = (window.AUTH_STATE_PREFIX || '') + Math.random().toString(36).slice(2);
+    const state = (window.AUTH_STATE_PREFIX || '') + rnd();
     store.set('oauthState', state);
     if (silent) store.set('silentAt', Date.now());
     const p = new URLSearchParams({
-      client_id: CLIENT_ID, redirect_uri: this.redirectUri(), response_type: 'token',
-      scope: SCOPES, include_granted_scopes: 'true', state
+      client_id: CLIENT_ID, redirect_uri: this.redirectUri(), response_type: 'token id_token',
+      scope: SCOPES, include_granted_scopes: 'true', state, nonce: this.nonce()
     });
     const hint = store.get('email');
     if (hint) p.set('login_hint', hint);
     if (silent) p.set('prompt', 'none');
     location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
   },
+  nonce() { const n = rnd(); store.set('oauthNonce', n); return n; },
   // Google'dan dönüşte adres çubuğundaki #access_token=... kısmını okur
   handleRedirect() {
     if (!location.hash.includes('state=')) return null;
@@ -270,7 +301,8 @@ const Auth = {
     store.del('oauthState');
     if (h.get('access_token')) {
       store.set('auth', { token: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000, scope: h.get('scope') || '' });
-      store.del('silentAt');
+      keepIdToken(h.get('id_token'), store.get('oauthNonce'));
+      store.del('oauthNonce'); store.del('silentAt');
       return 'ok';
     }
     return h.get('error') || 'error';
@@ -284,11 +316,11 @@ const Auth = {
     else showLogin();
   },
   logout() {
-    if (DESKTOP) { window.mailDesktop.logout(); store.del('auth'); store.del('email'); showLogin(); return; }
+    if (DESKTOP) { window.mailDesktop.logout(); wipePersonal(); location.reload(); return; }
     const t = store.get('auth');
-    if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t.token), { method: 'POST' }).catch(() => {});
-    store.del('auth'); store.del('email');
-    showLogin();
+    if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t.token), { method: 'POST', keepalive: true }).catch(() => {});
+    wipePersonal();
+    location.reload();   // bellekteki mailler de silinsin
   }
 };
 
@@ -426,18 +458,57 @@ function parseMessage(m) {
   };
 }
 
-function buildRaw({ to, cc, subject, body, inReplyTo, references, scheduledAt }) {
+// Postanın ham hali (RFC 822). Ek varsa multipart/mixed; her parça base64 olduğu için metin tamamen ASCII'dir.
+function buildMime({ to, cc, subject, body, inReplyTo, references, scheduledAt, attachments }) {
   const encWord = s => /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + bytesToB64(utf8(s)) + '?=';
+  const wrap = b64 => b64.replace(/.{76}/g, '$&\r\n');
   const addrs = s => emailsIn(s).join(', ');
   const lines = [`To: ${addrs(to)}`];
   if (cc && emailsIn(cc).length) lines.push(`Cc: ${addrs(cc)}`);
-  lines.push(`Subject: ${encWord(subject || '')}`, 'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64');
+  lines.push(`Subject: ${encWord(subject || '')}`, 'MIME-Version: 1.0');
   if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`, `References: ${[references, inReplyTo].filter(Boolean).join(' ')}`);
   // Zamanlanmış gönderim: Google zamanlayıcısı ve uygulama bu başlığa bakar
   if (scheduledAt) lines.push(`X-Mail-Scheduled: ${new Date(scheduledAt).toISOString()}`);
-  const b = bytesToB64(utf8(body || '')).replace(/.{76}/g, '$&\r\n');
-  return toB64url(lines.join('\r\n') + '\r\n\r\n' + b);
+  const text = wrap(bytesToB64(utf8(body || '')));
+  if (!attachments?.length) {
+    lines.push('Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64');
+    return lines.join('\r\n') + '\r\n\r\n' + text;
+  }
+  const bd = 'mail_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  lines.push(`Content-Type: multipart/mixed; boundary="${bd}"`);
+  const parts = [`--${bd}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${text}`];
+  for (const a of attachments) {
+    const name = a.filename || 'ek';
+    // Gmail'in kendisi gibi: Türkçe adlar "=?UTF-8?B?...?=" biçiminde
+    const fname = encWord(name.replace(/["\\\r\n]/g, '_'));
+    parts.push(`--${bd}\r\nContent-Type: ${a.mimeType || 'application/octet-stream'}; name="${fname}"\r\n` +
+      `Content-Disposition: attachment; filename="${fname}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap(bytesToB64(a.bytes))}`);
+  }
+  return lines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n') + `\r\n--${bd}--\r\n`;
+}
+const buildRaw = msg => toB64url(buildMime(msg));
+
+// Ekli posta büyük olabilir: Gmail'in yükleme adresine ham haliyle gönderilir (35 MB'a kadar)
+async function gmailUpload(path, mime, meta = {}) {
+  await Quota.take(100);
+  let tok = Auth.token();
+  if (!tok && DESKTOP) tok = await Auth.desktopRefresh();
+  if (!tok) { Auth.reauth(); throw new AuthError('oturum'); }
+  const b = 'up_' + Math.random().toString(36).slice(2);
+  const body = new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: message/rfc822\r\n\r\n`, mime, `\r\n--${b}--`]);
+  const res = await fetch(`https://gmail.googleapis.com/upload/gmail/v1/users/me/${path}?uploadType=multipart`, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'multipart/related; boundary=' + b }, body });
+  if (res.status === 401) { store.del('auth'); Auth.reauth(); throw new AuthError('oturum'); }
+  if (!res.ok) { let m = res.status + ''; try { m = (await res.json()).error.message; } catch {} throw new Error(m); }
+  return res.json();
+}
+// Eklerin içeriği gönderirken yüklenir (iletilen postanın ekleri Gmail'den o an alınır)
+async function loadAttBytes(list) {
+  for (const a of list || []) {
+    if (a.bytes) continue;
+    if (a.url) a.bytes = new Uint8Array(await (await fetch(a.url)).arrayBuffer());
+    else a.bytes = b64urlToBytes(a.data || await Gmail.attachment(a.mid, a.attachmentId));
+  }
 }
 
 const RealGmail = {
@@ -462,7 +533,10 @@ const RealGmail = {
   insertNote: (raw, labelIds) => call('messages', { method: 'POST', query: { internalDateSource: 'dateHeader' }, body: { raw, labelIds } }),
   createLabel: name => call('labels', { method: 'POST', body: { name, labelListVisibility: 'labelShow', messageListVisibility: 'show' } }),
   trashMessages: ids => pmap(ids, 5, id => call(`messages/${id}/trash`, { method: 'POST' })),
-  send: (msg, threadId) => call('messages/send', { method: 'POST', body: { raw: buildRaw(msg), ...(threadId ? { threadId } : {}) } }),
+  async send(msg, threadId) {
+    if (msg.attachments?.length) { await loadAttBytes(msg.attachments); return gmailUpload('messages/send', buildMime(msg), threadId ? { threadId } : {}); }
+    return call('messages/send', { method: 'POST', body: { raw: buildRaw(msg), ...(threadId ? { threadId } : {}) } });
+  },
   async attachment(messageId, attachmentId) { return (await call(`messages/${messageId}/attachments/${attachmentId}`)).data; },
   async filters() { return (await call('settings/filters')).filter || []; },
   createFilter: (criteria, action) => call('settings/filters', { method: 'POST', body: { criteria, action } }),
@@ -765,17 +839,44 @@ function readerButtons() {
    (Notes etiketi + X-Uniform-Type-Identifier: com.apple.mail-note). Gmail'de bir mesaj
    yerinde değiştirilemediği için kaydetmek = yeni sürümü ekle, eskisini çöpe taşı. */
 
+// Not içeriği sayfanın kendisinde düzenlendiği için (çerçeve yok) yalnızca izin verilen etiket ve özellikler geçer.
+// Çıktı sıfırdan kurulur: bilinmeyen etiketin içi korunur ama kendisi atılır; tehlikeli etiketler içeriğiyle birlikte atılır.
+const NOTE_TAGS = new Set(['div', 'p', 'br', 'span', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'blockquote', 'pre', 'code', 'a', 'img', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'hr', 'font', 'tt', 'small', 'big', 'center']);
+const NOTE_DROP = new Set(['script', 'style', 'noscript', 'template', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'svg', 'math', 'xmp', 'textarea',
+  'title', 'head', 'select', 'option', 'noembed', 'noframes', 'plaintext', 'form', 'input', 'button', 'base', 'meta', 'link', 'audio', 'video', 'source', 'track', 'canvas', 'portal']);
+const NOTE_ATTRS = { '*': ['style', 'dir', 'align'], a: ['href'], img: ['src', 'alt', 'width', 'height'], td: ['colspan', 'rowspan'], th: ['colspan', 'rowspan'], font: ['color', 'size', 'face'], ol: ['start', 'type'] };
+const safeUrl = (v, img) => {
+  const u = (v || '').replace(/[\u0000-\u0020\u007f-\u009f]/g, '');   // tarayıcı da bu karakterleri yok sayar ("java\tscript:")
+  return img ? /^(https:|cid:|data:image\/(png|jpe?g|gif|webp);)/i.test(u) : /^(https?:|mailto:|tel:|#)/i.test(u);
+};
 function sanitizeNoteHtml(html) {
-  const d = new DOMParser().parseFromString(html || '', 'text/html');
-  d.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,title,head').forEach(n => n.remove());
-  d.body.querySelectorAll('*').forEach(el => {
-    for (const at of [...el.attributes]) {
-      const n = at.name.toLowerCase();
-      if (n.startsWith('on') || n === 'class' || n === 'id' || (n === 'style' && /expression|url\(/i.test(at.value))) el.removeAttribute(at.name);
-      if ((n === 'href' || n === 'src') && /^\s*javascript:/i.test(at.value)) el.removeAttribute(at.name);
+  const src = new DOMParser().parseFromString(html || '', 'text/html');
+  const out = document.implementation.createHTMLDocument('');
+  const box = out.createElement('div');
+  const copy = (from, to) => {
+    for (const n of from.childNodes) {
+      if (n.nodeType === 3) { to.appendChild(out.createTextNode(n.nodeValue)); continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.localName;
+      if (n.namespaceURI !== 'http://www.w3.org/1999/xhtml' || NOTE_DROP.has(tag)) continue;
+      if (!NOTE_TAGS.has(tag)) { copy(n, to); continue; }
+      const el = out.createElement(tag);
+      for (const name of [...NOTE_ATTRS['*'], ...(NOTE_ATTRS[tag] || [])]) {
+        const v = n.getAttribute(name);
+        if (v == null) continue;
+        if (name === 'href' && !safeUrl(v)) continue;
+        if (name === 'src' && !safeUrl(v, true)) continue;
+        if (name === 'style' && /url\s*\(|expression|\\|@import|behavior|-moz-binding/i.test(v)) continue;
+        el.setAttribute(name, v);
+      }
+      if (tag === 'a') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+      to.appendChild(el);
+      copy(n, el);
     }
-  });
-  return d.body.innerHTML.trim();
+  };
+  copy(src.body, box);
+  return box.innerHTML.trim();
 }
 const textToHtml = t => esc(t || '').split(/\r?\n/).map(l => `<div>${l || '<br>'}</div>`).join('');
 
@@ -918,7 +1019,7 @@ function renderThread() {
             <span class="date">${fmtDate(m.date, open)}</span>
           </header>
           ${open ? `<div class="msg-body"></div>
-            ${m.attachments.length ? `<div class="atts">${m.attachments.map((a, ai) => `<button class="att" data-action="att" data-mid="${m.id}" data-ai="${ai}">${IC.clip}<span>${esc(a.filename)}</span><small>${fmtSize(a.size)}</small></button>${typeof pdfAttBtn === 'function' ? pdfAttBtn(m, a, ai) : ''}`).join('')}</div>` : ''}
+            ${m.attachments.length ? `<div class="atts">${m.attachments.map((a, ai) => `<button class="att" data-action="att" data-mid="${m.id}" data-ai="${ai}">${IC.clip}<span>${esc(a.filename)}</span><small>${fmtSize(a.size)}</small></button>${typeof pdfAttBtn === 'function' ? pdfAttBtn(m, a, ai) : ''}`).join('')}${m.attachments.length > 1 && typeof filesAllBtn === 'function' ? filesAllBtn(m) : ''}</div>` : ''}
             <div class="msg-actions">
               <button class="btn" data-action="reply" data-mid="${m.id}">${IC.reply} Yanıtla</button>
               <button class="btn" data-action="forward" data-mid="${m.id}">${IC.forward} İlet</button>
@@ -958,7 +1059,9 @@ function isTrackingImg(img, src) {
   const w = imgDim(img, 'width'), h = imgDim(img, 'height');
   if ((w != null && w <= 3 && (h == null || h <= 3)) || (h != null && h <= 3 && (w == null || w <= 3))) return true;
   const st = (img.getAttribute('style') || '').replace(/\s+/g, '').toLowerCase();
-  if (/display:none|visibility:hidden|opacity:0(?![.\d])|(?:^|;)(max-)?(width|height):[0-3](px)?(;|$)/.test(st)) return true;
+  if (/(?:^|;)(max-)?(width|height):[0-3](px)?(;|$)/.test(st)) return true;
+  // Gizli resim: telefon/masaüstü sürümü olabilir (stil sınıfıyla açılır); sınıfsız ve boyutsuzsa takipçi say
+  if (/display:none|visibility:hidden|opacity:0(?![.\d])/.test(st) && !img.getAttribute('class') && !img.getAttribute('id') && !(w > 3 || h > 3)) return true;
   return false;
 }
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
@@ -1037,7 +1140,17 @@ function prepareHtml(html, stats = {}) {
   if (block) d.querySelectorAll('link[rel~="stylesheet" i][href^="http" i]').forEach(l => {
     if (TRACKER_RE.test(l.getAttribute('href'))) { stats.trackers++; stats.hosts.add(hostOf(l.getAttribute('href'))); l.remove(); }
   });
-  let out = d.body.innerHTML;
+  // Sayfayı başka adrese yönlendirebilen ya da linklerin hedefini değiştiren etiketler
+  d.querySelectorAll('meta,base').forEach(n => n.remove());
+  // Gönderenin <head> içindeki stilleri de al: kampanya mailleri masaüstü/telefon resimlerini bu stillerle gizleyip gösterir.
+  // Stil içinden yüklenen takip adresleri (@import, url()) engellenir.
+  const cssClean = css => block ? css.replace(/@import[^;]*;?/gi, '').replace(/url\((['"]?)([^'")]+)\1\)/gi, (all, q, u) => {
+    if (TRACKER_RE.test(u)) { stats.trackers++; stats.hosts.add(hostOf(u)); return 'none'; }
+    return all;
+  }) : css;
+  d.body.querySelectorAll('style').forEach(st => { st.textContent = cssClean(st.textContent); });
+  const headCss = [...d.head.querySelectorAll('style')].map(st => `<style>${cssClean(st.textContent).replace(/<\/style/gi, '')}</style>`).join('');
+  let out = headCss + d.body.innerHTML;
   if (proxyAll()) out = out.replace(/url\((['"]?)(https?:\/\/[^'")]+)\1\)/gi, (_, q, u) => `url(${q}${imgProxy(u.replace(/&amp;/g, '&'))}${q})`);
   return out.replace(/url\((['"]?)http:\/\//gi, 'url($1https://');
 }
@@ -1125,7 +1238,11 @@ function renderBody(container, m) {
     wired = true;
     fit();
     try { new ResizeObserver(fit).observe(doc.getElementById('mf') || doc.body); } catch {}
+    // Yalnızca web, mail ve telefon linkleri açılır (javascript:, data:, file: gibi adresler engellenir); orta tuş dahil
+    const badLink = ev => { const any = ev.target.closest?.('a[href]'); if (any && !/^(https?:|mailto:|tel:|#)/i.test(any.getAttribute('href').replace(/[\u0000-\u0020]/g, ''))) { ev.preventDefault(); return true; } };
+    doc.addEventListener('auxclick', badLink);
     doc.addEventListener('click', ev => {
+      if (badLink(ev)) return;
       const a = ev.target.closest?.('a[href^="tel:" i]');
       if (!a) return;
       ev.preventDefault();
@@ -1215,18 +1332,21 @@ function openCompose(init = {}) {
       <header class="sheet-head">
         <button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button>
         <h3>${esc(init.title || 'Yeni posta')}</h3>
+        <button type="button" class="icon-btn" data-action="cmp-attach" title="Dosya ekle">${IC.clip}</button>
         <button type="button" class="icon-btn sched-btn" data-action="sched-menu" title="Gönderme zamanını planla">${IC.clock}</button>
         <button type="submit" class="btn primary">${IC.send} Gönder</button>
       </header>
       <label class="field"><span>Kime</span><input name="to" type="text" inputmode="email" autocomplete="email" value="${esc(init.to || '')}" required></label>
       ${init.cc ? `<label class="field"><span>Cc</span><input name="cc" type="text" value="${esc(init.cc)}"></label>` : ''}
       <label class="field"><span>Konu</span><input name="subject" type="text" spellcheck="true" lang="tr" autocorrect="on" autocapitalize="sentences" value="${esc(init.subject || '')}"></label>
+      <div class="cmp-atts" id="cmpAtts" hidden></div>
       <textarea name="body" spellcheck="true" lang="tr" autocorrect="on" autocapitalize="sentences" placeholder="Mesajını yaz…">
 ${esc(typeof bodyWithSignature === 'function' ? bodyWithSignature(init) : (init.body || ''))}</textarea>
     </form>
   </div>`;
   const form = $('#composeForm');
   const ta = form.body;
+  if (typeof cmpAttInit === 'function') cmpAttInit(form, init);
   // Metin alanına ilk girişte imleç en başta olsun (imzanın altında değil)
   // Tıklama imleci tıklanan yere koyar; henüz bir şey yazılmadıysa başa al
   const untouched = ta.value;
@@ -1240,9 +1360,10 @@ ${esc(typeof bodyWithSignature === 'function' ? bodyWithSignature(init) : (init.
   form.addEventListener('submit', async e => {
     e.preventDefault();
     if (!emailsIn(form.to.value).length) { toast('Geçerli bir alıcı adresi gir'); return; }
+    if (typeof cmpAttCheck === 'function' && !cmpAttCheck()) return;
     const msg = {
       to: form.to.value, cc: form.cc?.value, subject: form.subject.value, body: ta.value,
-      inReplyTo: init.inReplyTo, references: init.references
+      inReplyTo: init.inReplyTo, references: init.references, attachments: S.compose.atts?.length ? S.compose.atts : undefined
     };
     // Göndermeyi geri al: posta birkaç saniye bekletilir, bu sürede vazgeçilebilir
     if (typeof undoDelay === 'function' && undoDelay() > 0) { closeModal(); queueSend(msg, init); return; }
@@ -1260,23 +1381,37 @@ ${esc(typeof bodyWithSignature === 'function' ? bodyWithSignature(init) : (init.
   });
 }
 
+// Alıntı metni: kampanya maillerinin düz metin kısmı upuzun takip linkleriyle dolu olabiliyor; okunur hale getir
+function mailText(m, limit = 0) {
+  const LONG = /https?:\/\/[^\s<>"')\]]{60,}/g;
+  let txt = m.text || '';
+  if (m.html && (!txt.trim() || (txt.match(LONG) || []).length >= 3)) txt = htmlToText(m.html);
+  if (!txt.trim()) txt = m.snippet || '';
+  txt = txt.replace(LONG, u => { try { return `[${new URL(u).hostname.replace(/^www\./, '')}]`; } catch { return '[bağlantı]'; } })
+    .split('\n').map(l => l.replace(/[ \t\u00a0]+$/g, '').replace(/^[ \t\u00a0]+/, s => s.length > 4 ? '' : s)).join('\n')
+    .replace(/\n{3,}/g, '\n\n').trim();
+  if (limit && txt.length > limit) txt = txt.slice(0, limit).replace(/\s+\S*$/, '') + '\n[…]';
+  return txt;
+}
 function quoteOf(m) {
-  const txt = m.text || (m.html ? htmlToText(m.html) : m.snippet);
+  const txt = mailText(m, 4000);
   return `\n\n${fmtDate(m.date, true)} tarihinde ${m.from} <${m.fromEmail}> şunu yazdı:\n` + txt.split('\n').map(l => '> ' + l).join('\n');
 }
-function replyTo(m) {
+function replyTo(m, extra = {}) {
   const subj = /^(re|ynt|yanıt)\s*:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject;
   const sentByMe = m.fromEmail === S.email;
   openCompose({
     title: 'Yanıtla', to: sentByMe ? m.to : (m.replyTo || `${m.from} <${m.fromEmail}>`), subject: subj,
-    body: quoteOf(m), kind: 'reply', inReplyTo: m.messageId, references: m.references, threadId: S.thread.id
+    body: quoteOf(m), kind: 'reply', inReplyTo: m.messageId, references: m.references, threadId: S.thread.id, ...extra
   });
 }
-function forward(m) {
+function forward(m, extra = {}) {
   const subj = /^(fwd?|ilt)\s*:/i.test(m.subject) ? m.subject : 'Fwd: ' + m.subject;
-  const txt = m.text || (m.html ? htmlToText(m.html) : m.snippet);
+  const txt = mailText(m);
   openCompose({
     title: 'İlet', subject: subj, kind: 'forward',
+    // İletilen postanın ekleri de gider (Gmail'deki gibi); yazarken çıkarılabilir
+    atts: (m.attachments || []).map(a => ({ filename: a.filename, mimeType: a.mimeType, size: a.size, mid: m.id, attachmentId: a.attachmentId, data: a.data, url: a.url })), ...extra,
     body: `\n\n---------- İletilen ileti ----------\nGönderen: ${m.from} <${m.fromEmail}>\nTarih: ${fmtDate(m.date, true)}\nKonu: ${m.subject}\nKime: ${m.to}\n\n${txt}`
   });
 }
@@ -1719,7 +1854,7 @@ const ACTIONS = {
     try {
       el.classList.add('busy');
       const bytes = a.url ? new Uint8Array(await (await fetch(a.url)).arrayBuffer()) : b64urlToBytes(a.data || await Gmail.attachment(m.id, a.attachmentId));
-      const blob = new Blob([bytes], { type: a.mimeType || 'application/octet-stream' });
+      const blob = new Blob([bytes], { type: 'application/octet-stream' });   // gönderenin yazdığı türe güvenme (html/svg açılırsa sayfada çalışabilir)
       const url = URL.createObjectURL(blob);
       const link = Object.assign(document.createElement('a'), { href: url, download: a.filename, target: '_blank' });
       document.body.appendChild(link); link.click(); link.remove();

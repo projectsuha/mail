@@ -4,7 +4,7 @@
    Altına sürüm, cihaz ve görünüm bilgisi kendiliğinden eklenir (mail içeriği ya da kişisel veri eklenmez). */
 'use strict';
 
-const FEEDBACK_TO = 'snn.erdogan98@gmail.com';   // gizlilik sayfasında da yazan iletişim adresi
+const FEEDBACK_TO = 'project.suha.2026@gmail.com';   // gizlilik sayfasında da yazan iletişim adresi
 const FB_KINDS = [['hata', 'Hata'], ['oneri', 'Öneri'], ['diger', 'Diğer']];
 let fbKind = 'hata';
 
@@ -28,9 +28,10 @@ async function fbSend(kindId, kindName, text) {
   if (DEMO) { await sleep(300); return 'yonetici'; }
   if (url) {
     try {
-      const tok = Auth.token() || (DESKTOP ? await Auth.desktopRefresh() : null);
+      const kimlik = await accProof();
+      if (!kimlik) throw new Error('kimlik yok');
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ islem: 'geri-bildirim', token: tok, tur: kindId, metin: text, bilgi: fbInfoText() }) });
+        body: JSON.stringify({ islem: 'geri-bildirim', ...kimlik, tur: kindId, metin: text, bilgi: fbInfoText() }) });
       const j = await r.json();
       if (j.tamam) return 'yonetici';
       if (j.hata === 'cok') throw new Error('Bugün çok fazla geri bildirim gönderdin, yarın tekrar dene');

@@ -690,6 +690,9 @@ input.note-h::placeholder { color: var(--fg-3); }
 @media (max-width: 560px) {
   .theme-grid { grid-template-columns: repeat(2, 1fr); }
   .set-row { flex-wrap: wrap; }
+  /* Yazı en az 190 piksel yer alsın; sığmayan seçici (Kapalı/5 sn/…) alt satıra insin */
+  .set-row > div:first-child { flex: 1 1 190px; }
+  .set-row > .seg { max-width: 100%; overflow-x: auto; }
 }
 /* Etiketler başlığındaki otomatik etiketleme düğmesi */
 .sep-btn { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: var(--fg-3); cursor: pointer; padding: 0; }
@@ -1123,3 +1126,38 @@ body.notes-app .listpane > .bar h1 { padding-left: 0; }
   html.pdf-printing #pdfPrint { display: block !important; }
   html.pdf-printing .dx { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ── Ekler: yazarken ekleme, önizleme, tümünü indir ── */
+.cmp-atts { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.cmp-att { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 4px 4px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--bg); font-size: 13.5px; }
+.cmp-att > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.cmp-att small { color: var(--fg-3); }
+.cmp-att svg { width: 14px; height: 14px; flex: none; color: var(--fg-2); }
+.cmp-att-x { border: 0; background: transparent; color: var(--fg-3); width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; cursor: pointer; }
+.cmp-att-x:hover { background: var(--bg-3); color: var(--fg); }
+.cmp-att-sum { align-self: center; font-size: 12.5px; color: var(--fg-3); padding: 0 4px; }
+.compose.drop-on { outline: 2px dashed var(--accent); outline-offset: -8px; }
+.att.att-all { color: var(--fg-2); }
+.sheet.fv-sheet { width: min(520px, 100%); }
+.sheet.fv-sheet.wide { width: min(980px, 100%); height: 100%; max-height: min(940px, 100%); }
+.fv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.fv-size { color: var(--fg-3); flex: none; padding-right: 6px; }
+.fv-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; display: flex; flex-direction: column; }
+.fv-frame { flex: 1; width: 100%; min-height: 60vh; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.fv-img { flex: 1; display: grid; place-items: center; background: repeating-conic-gradient(#0000000a 0 25%, transparent 0 50%) 0 0 / 18px 18px; border-radius: 10px; min-height: 200px; }
+.fv-img img { max-width: 100%; max-height: 74vh; object-fit: contain; border-radius: 4px; }
+.fv-text { margin: 0; flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.fv-none { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 28px 16px; color: var(--fg-2); }
+.fv-none p { margin: 0; max-width: 340px; line-height: 1.45; }
+.fv-none .btn { text-decoration: none; }
+.pdf-doc.other { background: linear-gradient(160deg, #7c838d, #59606a); font-size: 12px; }
+.fv-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.fv-explain { margin: 0; color: var(--fg-2); font-size: 14px; line-height: 1.5; }
+.pdf-actions { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .fv-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .cmp-att > span { max-width: 150px; }
+}
+
+.dx-page.fit { width: var(--pw); max-width: none; padding: var(--pm); }

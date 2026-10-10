@@ -40,7 +40,7 @@ const Auth = {
   // Google dönüşü ana sayfaya gelir (kayıtlı adres o), ana sayfa buraya yönlendirir
   redirectUri() { return location.origin + location.pathname.replace(/[^/]*$/, ''); },
   login(silent) {
-    const state = 'yon-' + Math.random().toString(36).slice(2);
+    const state = 'yon-' + [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
     store.set('yonState', state);
     const p = new URLSearchParams({ client_id: CFG.CLIENT_ID, redirect_uri: this.redirectUri(), response_type: 'token', scope: SCOPE, state });
     const hint = store.get('yonEmail'); if (hint) p.set('login_hint', hint);
@@ -79,7 +79,7 @@ class SrvError extends Error { constructor(j) { super(j.hata); this.j = j; } }
 
 const demoSrv = { sifre: null, hata: 0, e: { mode: 'off', allow: [{ h: 'c0ffee'.padEnd(64, '1'), ad: 'Abim' }], block: [] },
   ku: [
-    { id: 'ku:snn.erdogan98@gmail.com', e: 'snn.erdogan98@gmail.com', ad: 'Sinan Erdoğan', son: Date.now() - 6e4, ilk: Date.now() - 864e5 * 5, sayi: 40, cihaz: 'iPhone (iOS 18.0) · Ana ekran uygulaması', surum: 'V0.6' },
+    { id: 'ku:project.suha.2026@gmail.com', e: 'project.suha.2026@gmail.com', ad: 'Sinan Erdoğan', son: Date.now() - 6e4, ilk: Date.now() - 864e5 * 5, sayi: 40, cihaz: 'iPhone (iOS 18.0) · Ana ekran uygulaması', surum: 'V0.6' },
     { id: 'ku:mehmet.erdogan@gmail.com', e: 'mehmet.erdogan@gmail.com', ad: 'Mehmet Erdoğan', son: Date.now() - 36e5 * 3, ilk: Date.now() - 864e5 * 2, sayi: 6, cihaz: 'Windows · Windows programı', surum: 'V0.6' },
     { id: 'ku:ali.veli@ornekfirma.com', e: 'ali.veli@ornekfirma.com', ad: 'Ali Veli', son: Date.now() - 864e5, ilk: Date.now() - 864e5 * 1.5, sayi: 3, cihaz: 'Android (sürüm 14) · Chrome', surum: 'V0.6' },
     { id: 'ku:yabanci.kisi@hotmail.com', e: 'yabanci.kisi@hotmail.com', ad: '', son: Date.now() - 864e5 * 4, ilk: Date.now() - 864e5 * 4, sayi: 1, cihaz: 'Windows · Edge', surum: 'V0.6' }
@@ -124,6 +124,8 @@ function errText(e) {
   if (j.hata === 'kilit') return `Çok fazla yanlış deneme. ${j.dakika || 15} dakika sonra tekrar dene.`;
   if (j.hata === 'yetki') return 'Google girişin doğrulanamadı. Çıkış yapıp tekrar gir.';
   if (j.hata === 'kisa') return 'Şifre en az 6 karakter olmalı.';
+  if (j.hata === 'dolu') return 'Liste deposu dolmak üzere. Eski geri bildirimleri ya da kullanıcıları silip tekrar dene.';
+  if (j.hata === 'sunucu') return 'Liste servisinde bir hata oldu. Biraz sonra tekrar dene.';
   if (/Failed to fetch|NetworkError|JSON/i.test(e.message)) return 'Liste servisine ulaşılamadı. İnternetini ve servis adresini kontrol et.';
   return 'Hata: ' + e.message;
 }
@@ -349,7 +351,7 @@ function render() {
 
 /* ───── Akış ───── */
 async function boot() {
-  if (DEMO) { store.set('yonEmail', 'snn.erdogan98@gmail.com'); return afterLogin(); }
+  if (DEMO) { store.set('yonEmail', 'project.suha.2026@gmail.com'); return afterLogin(); }
   const r = Auth.handleRedirect();
   if (r && r !== 'ok') return showLogin(sessionStorage.getItem('yonSilent') ? '' : r === 'access_denied' ? 'Giriş iptal edildi.' : 'Giriş tamamlanamadı, tekrar dene.');
   if (!Auth.token()) return store.get('yonEmail') && r !== 'ok' && !sessionStorage.getItem('yonSilent')

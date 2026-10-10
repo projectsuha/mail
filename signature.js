@@ -13,7 +13,7 @@ Object.assign(RealGmail, {
 if (window.MockGmail) {
   let demoSig = '<div dir="ltr">Sinan Erdoğan<br>+90 532 000 00 00</div>';
   Object.assign(window.MockGmail, {
-    sendAs: () => new Promise(r => setTimeout(() => r([{ sendAsEmail: 'snn.erdogan98@gmail.com', isPrimary: true, signature: demoSig }]), 150)),
+    sendAs: () => new Promise(r => setTimeout(() => r([{ sendAsEmail: 'project.suha.2026@gmail.com', isPrimary: true, signature: demoSig }]), 150)),
     setSignature: (e, html) => { demoSig = html; return Promise.resolve({}); }
   });
 }

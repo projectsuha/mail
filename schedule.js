@@ -19,7 +19,10 @@ function setSchedHeader(raw, at) {
 }
 
 const RealSched = {
-  create: (msg, threadId, at) => call('drafts', { method: 'POST', body: { message: { raw: buildRaw({ ...msg, scheduledAt: at }), ...(threadId ? { threadId } : {}) } } }),
+  async create(msg, threadId, at) {
+    if (msg.attachments?.length) { await loadAttBytes(msg.attachments); return gmailUpload('drafts', buildMime({ ...msg, scheduledAt: at }), { message: threadId ? { threadId } : {} }); }
+    return call('drafts', { method: 'POST', body: { message: { raw: buildRaw({ ...msg, scheduledAt: at }), ...(threadId ? { threadId } : {}) } } });
+  },
   async list() {
     const r = await call('drafts', { query: { maxResults: 100 } });
     const ds = await pmap(r.drafts || [], 5, d => call('drafts/' + d.id, { query: { format: 'metadata' } }).catch(() => null));
@@ -117,8 +120,9 @@ async function schedCompose(when) {
   const btn = form.querySelector('.sched-btn');
   btn.disabled = true;
   try {
+    if (typeof cmpAttCheck === 'function' && !cmpAttCheck()) { btn.disabled = false; return; }
     const d = await Sched.create({ to: form.to.value, cc: form.cc?.value, subject: form.subject.value, body: form.body.value,
-      inReplyTo: init.inReplyTo, references: init.references }, init.threadId, when);
+      inReplyTo: init.inReplyTo, references: init.references, attachments: init.atts?.length ? init.atts : undefined }, init.threadId, when);
     closeModal();
     await schedRefresh();
     toast(`Zamanlandı: ${schedWhen(when)}`, [['Geri al', async () => { await Sched.remove(d.id); schedRefresh(); toast('Zamanlama iptal edildi'); }]], 6000);
@@ -193,7 +197,7 @@ function renderSched() {
 }
 
 /* Google zamanlayıcısı kurulumu */
-const SCHED_SCRIPT = String.raw`// Mail — zamanlayıcı (sürüm 5)
+const SCHED_SCRIPT = String.raw`// Mail — zamanlayıcı (sürüm 6)
 // Her dakika çalışır:
 //  1) "X-Mail-Scheduled" zamanı gelmiş taslakları gönderir,
 //  2) zamanı gelen ertelenmiş mailleri gelen kutusuna geri getirir.
@@ -202,7 +206,8 @@ function zamanlanmisPostalariGonder() {
   GmailApp.getDrafts().forEach(function (taslak) {
     var m = taslak.getMessage();
     var zaman = m.getHeader('X-Mail-Scheduled');
-    if (!zaman) zaman = ((m.getRawContent().match(/^X-Mail-Scheduled:[ \t]*(.+)$/m) || [])[1] || '').trim();
+    // Yalnızca başlık kısmına bakılır: mailin metninde ya da ekinde geçen aynı satır zaman sayılmaz
+    if (!zaman) zaman = ((basliklar(m.getRawContent()).match(/^X-Mail-Scheduled:[ \t]*(.+)$/m) || [])[1] || '').trim();
     if (!zaman) return;
     var t = Date.parse(zaman);
     if (!isNaN(t) && t <= simdi) {
@@ -212,6 +217,7 @@ function zamanlanmisPostalariGonder() {
   try { ertelenenleriGeriGetir(); } catch (e) { console.error(e); }
 }
 
+function basliklar(ham) { var i = String(ham || '').search(/\r?\n\r?\n/); return i < 0 ? String(ham || '') : ham.slice(0, i); }
 // Göndermeden önce "X-Mail-Scheduled" satırını siler; alıcı maile ne zaman planlandığını göremez.
 function temizleVeGonder(taslak) {
   var api = 'https://gmail.googleapis.com/gmail/v1/users/me/drafts/' + taslak.getId();
@@ -219,7 +225,8 @@ function temizleVeGonder(taslak) {
   try {
     var d = JSON.parse(UrlFetchApp.fetch(api + '?format=raw', { headers: h }).getContentText());
     var ham = Utilities.newBlob(Utilities.base64DecodeWebSafe(d.message.raw)).getDataAsString('ISO-8859-1');
-    ham = ham.replace(/^X-Mail-Scheduled:.*(\r?\n)?/m, '');
+    var sinir = ham.search(/\r?\n\r?\n/); if (sinir < 0) sinir = ham.length;
+    ham = ham.slice(0, sinir).replace(/^X-Mail-Scheduled:.*(\r?\n)?/m, '') + ham.slice(sinir);
     var bayt = Utilities.newBlob('').setDataFromString(ham, 'ISO-8859-1').getBytes();
     UrlFetchApp.fetch(api, { method: 'put', contentType: 'application/json', headers: h,
       payload: JSON.stringify({ id: taslak.getId(), message: { raw: Utilities.base64EncodeWebSafe(bayt), threadId: d.message.threadId } }) });
@@ -264,7 +271,30 @@ function doGet() {
     allow: e.allow.map(function (x) { return x.h; }),
     block: e.block.map(function (x) { return x.h; }) });
 }
+// Programın Google kimlik kartı (ID token) doğrulanır: Google imzalı, bu programa verilmiş, süresi geçmemiş olmalı.
+// Kart yalnızca kim olduğunu gösterir; kullanıcının mailine erişim sağlamaz.
+var PROGRAM_KIMLIGI = '${CLIENT_ID}';
+// Aynı Google Cloud projesindeki istemciler (web sitesi ve Windows programı) kabul edilir; başka uygulamalara verilmiş kartlar/anahtarlar reddedilir.
+var PROJE = String(PROGRAM_KIMLIGI).split('-')[0];
+function kendiProgrami(aud) {
+  return /^\d{6,}$/.test(PROJE) && String(aud || '').indexOf(PROJE + '-') === 0 && /\.apps\.googleusercontent\.com$/.test(String(aud));
+}
+function kimlikKarti(kart) {
+  var r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(kart), { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return '';
+  var j = JSON.parse(r.getContentText());
+  if (!kendiProgrami(j.aud)) return '';
+  if (j.iss !== 'accounts.google.com' && j.iss !== 'https://accounts.google.com') return '';
+  if (String(j.email_verified) !== 'true' || Number(j.exp) * 1000 < Date.now()) return '';
+  return String(j.email || '').toLowerCase();
+}
+// Eski yol (eski Windows programı ve Yönetici): erişim anahtarı önce bu programa ait mi diye Google'a sorulur
 function girenKim(token) {
+  var ti = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token), { muteHttpExceptions: true });
+  if (ti.getResponseCode() !== 200) return '';
+  var tj = JSON.parse(ti.getContentText());
+  if (!kendiProgrami(tj.azp || tj.aud)) return '';
+  if (tj.email && String(tj.email_verified) === 'true') return String(tj.email).toLowerCase();
   var adresler = ['https://www.googleapis.com/oauth2/v3/userinfo', 'https://gmail.googleapis.com/gmail/v1/users/me/profile'];
   for (var i = 0; i < adresler.length; i++) {
     var r = UrlFetchApp.fetch(adresler[i], { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
@@ -274,17 +304,49 @@ function girenKim(token) {
   }
   return '';
 }
-function sifreOzeti(sifre, tuz) {
-  var x = tuz + ':' + sifre;
-  for (var i = 0; i < 300; i++)
+function hexOzet(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8)
+    .map(function (b) { return ((b + 256) % 256).toString(16).replace(/^(.)$/, '0$1'); }).join('');
+}
+// Kimlik sonucu 5 dakika önbellekte tutulur (her istekte Google'a sormamak, sahte isteklerle kotayı tüketmemek için)
+function kimBul(b) {
+  var kanit = b.kimlik ? 'i:' + b.kimlik : (b.token ? 't:' + b.token : '');
+  if (!kanit || kanit.length > 4096) return '';
+  var cache = CacheService.getScriptCache(), anahtar = 'kim:' + hexOzet(kanit), v = cache.get(anahtar);
+  if (v !== null) return v;
+  v = b.kimlik ? kimlikKarti(b.kimlik) : girenKim(b.token);
+  cache.put(anahtar, v, v ? 300 : 60);
+  return v;
+}
+// Erişim listesine göre bu kişi programı kullanabilir mi (sahip her zaman)
+function izinli(kim) {
+  if (!kim) return false;
+  if (kim === Session.getEffectiveUser().getEmail().toLowerCase()) return true;
+  var e = erisimOku(), h = hexOzet('mail-erisim-v1:' + kim);
+  var var_ = function (L) { return (e[L] || []).some(function (x) { return x.h === h; }); };
+  return e.mode === 'allow' ? var_('allow') : e.mode === 'block' ? !var_('block') : true;
+}
+// Depo sınırı (Google: toplam ~500 KB). Dolmaya yakınsa yeni geri bildirim/kullanıcı kabul edilmez; yönetici ayarları her zaman yazılabilsin.
+function depoDurumu(onek) {
+  var tum = OZ.getProperties(), boyut = 0, sayi = 0;
+  Object.keys(tum).forEach(function (k) { boyut += k.length + String(tum[k]).length; if (k.indexOf(onek) === 0) sayi++; });
+  return { dolu: boyut > 400000, sayi: sayi };
+}
+function sifreOzeti(sifre, tuz, surum) {
+  var x = tuz + ':' + sifre, tur = surum === 2 ? 20000 : 300;
+  for (var i = 0; i < tur; i++)
     x = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, x + tuz, Utilities.Charset.UTF_8));
   return x;
 }
 function doPost(istek) {
-  var lock = LockService.getScriptLock(); lock.waitLock(10000);
+  var lock = null;
   try {
-    var b = JSON.parse(istek.postData.contents);
-    var kim = b.token ? girenKim(b.token) : '';
+    var govde = (istek.postData && istek.postData.contents) || '';
+    if (govde.length > 20000) return cevap({ hata: 'buyuk' });
+    var b = JSON.parse(govde);
+    var kim = kimBul(b);                                 // kimlik kilitten önce: sahte istekler diğerlerini bekletmesin
+    if (!kim) return cevap({ hata: 'yetki' });
+    lock = LockService.getScriptLock(); lock.waitLock(10000);
     if (b.islem === 'geri-bildirim') return geriBildirimAl(b, kim);
     if (b.islem === 'merhaba') return kullaniciKaydet(b, kim);
     if (!kim || kim !== Session.getEffectiveUser().getEmail().toLowerCase()) return cevap({ hata: 'yetki' });
@@ -293,21 +355,24 @@ function doPost(istek) {
     if (b.islem === 'durum') return cevap({ sifreVar: !!y.ozet });
     if (!y.ozet) {                                   // ilk kez: şifre belirle
       if (b.islem !== 'sifre-kur' || String(b.yeni || '').length < 6) return cevap({ hata: 'sifre-yok' });
-      y = { tuz: Utilities.getUuid(), hata: 0 }; y.ozet = sifreOzeti(b.yeni, y.tuz);
+      y = { tuz: Utilities.getUuid(), hata: 0, v: 2 }; y.ozet = sifreOzeti(b.yeni, y.tuz, 2);
       OZ.setProperty('yonetici', JSON.stringify(y));
       return cevap(erisimOku());
     }
-    if (sifreOzeti(String(b.sifre || ''), y.tuz) !== y.ozet) {
-      y.hata = (y.hata || 0) + 1;
-      if (y.hata >= 5) { y.hata = 0; y.kilit = simdi + 15 * 60000; }
-      OZ.setProperty('yonetici', JSON.stringify(y));
+    // Deneme sayısı karşılaştırmadan ÖNCE yazılır: yazılamazsa (depo dolu vb.) işlem durur, kilit atlatılamaz
+    y.hata = (y.hata || 0) + 1;
+    OZ.setProperty('yonetici', JSON.stringify(y));
+    if (sifreOzeti(String(b.sifre || ''), y.tuz, y.v) !== y.ozet) {
+      if (y.hata >= 5) { y.hata = 0; y.kilit = simdi + 15 * 60000; OZ.setProperty('yonetici', JSON.stringify(y)); }
       return cevap({ hata: y.kilit > simdi ? 'kilit' : 'sifre', kalan: 5 - y.hata, dakika: 15 });
     }
-    if (y.hata || y.kilit) { y.hata = 0; delete y.kilit; OZ.setProperty('yonetici', JSON.stringify(y)); }
+    y.hata = 0; delete y.kilit;
+    if (y.v !== 2) { y.tuz = Utilities.getUuid(); y.ozet = sifreOzeti(b.sifre, y.tuz, 2); y.v = 2; }   // eski, zayıf özeti yenile
+    OZ.setProperty('yonetici', JSON.stringify(y));
     var e = erisimOku(), L = b.liste === 'block' ? 'block' : 'allow';
     if (b.islem === 'sifre-kur') {
       if (String(b.yeni || '').length < 6) return cevap({ hata: 'kisa' });
-      y.tuz = Utilities.getUuid(); y.ozet = sifreOzeti(b.yeni, y.tuz);
+      y.tuz = Utilities.getUuid(); y.ozet = sifreOzeti(b.yeni, y.tuz, 2); y.v = 2;
       OZ.setProperty('yonetici', JSON.stringify(y));
     }
     if (b.islem === 'mod' && /^(off|allow|block)$/.test(b.mode)) e.mode = b.mode;
@@ -320,15 +385,16 @@ function doPost(istek) {
     if (/^gb-/.test(b.islem)) return cevap({ gb: geriBildirimler(b) });
     if (/^ku-/.test(b.islem)) return cevap({ ku: kullanicilar(b) });
     return cevap(e);
-  } catch (err) { return cevap({ hata: String(err) }); }
-  finally { lock.releaseLock(); }
+  } catch (err) { console.error(err); return cevap({ hata: 'sunucu' }); }
+  finally { if (lock) lock.releaseLock(); }
 }
 // ── Programı kullananlar ──
 // Program açılınca kullanıcı kendini bildirir (Google girişiyle doğrulanır): e-posta, son giriş, cihaz, sürüm.
 // Sadece yönetici (Google girişi + şifre) görebilir ve listeden silebilir.
 function kullaniciKaydet(b, kim) {
-  if (!kim) return cevap({ hata: 'yetki' });
+  if (!kim || !izinli(kim)) return cevap({ hata: 'yetki' });
   var k = 'ku:' + kim, eski = JSON.parse(OZ.getProperty(k) || 'null'), t = Date.now();
+  if (!eski) { var d = depoDurumu('ku:'); if (d.dolu || d.sayi >= 300) return cevap({ hata: 'dolu' }); }
   var u = eski || { e: kim, ilk: t, sayi: 0 };
   u.son = t; u.sayi = (u.sayi || 0) + 1;
   u.ad = String(b.ad || u.ad || '').slice(0, 60);
@@ -348,7 +414,9 @@ function kullanicilar(b) {
 // Programı kullanan herkes (Google girişiyle kim olduğu doğrulanarak) gönderebilir; günde en fazla 10.
 // Sadece yönetici (Google girişi + şifre) okuyabilir, okundu işaretleyebilir, silebilir.
 function geriBildirimAl(b, kim) {
-  if (!kim) return cevap({ hata: 'yetki' });
+  if (!kim || !izinli(kim)) return cevap({ hata: 'yetki' });
+  var d = depoDurumu('gb:');
+  if (d.dolu || d.sayi >= 300) return cevap({ hata: 'dolu' });
   var metin = String(b.metin || '').trim().slice(0, 3000);
   if (metin.length < 3) return cevap({ hata: 'bos' });
   var tum = OZ.getProperties(), gun = Date.now() - 86400000, say = 0;
@@ -387,7 +455,7 @@ function kurulum() {
   console.log('Kurulum tamam. Zamanlanmış postalar ve ertelenen mailler artık otomatik işlenecek.');
 }
 `;
-const SCHED_SCRIPT_VER = 5;
+const SCHED_SCRIPT_VER = 6;
 
 function openSchedSetup() {
   const done = !!store.get('schedScript');
@@ -399,7 +467,7 @@ function openSchedSetup() {
         <h3>Google zamanlayıcısı</h3>
       </header>
       <div class="set-body">
-        ${done && store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? `<div class="card upd-card"><b>Güncelleme:</b> script.google.com'da <b>Mail Zamanlayıcı</b> projesini aç, eski kodu tamamen silip aşağıdaki yeni kodu yapıştır, <b>Ctrl+S</b> ile kaydet. Sonra bir kez <b>kurulum</b>'u seçip <b>▷ Çalıştır</b>'a bas ve istenen izinleri onayla. <b>Mail Yönetici'yi kurduysan</b> son olarak sağ üstte <b>Dağıt → Dağıtımları yönet → ✎ (kalem) → Sürüm: Yeni sürüm → Dağıt</b> de (adres değişmez). Bitince en alttaki düğmeye bas.</div>` : ''}
+        ${done && store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? `<div class="card upd-card"><b>Güncelleme:</b> script.google.com'da <b>zamanlayıcı</b> projesini (Zamanlayıcı E-posta) aç, eski kodu tamamen silip aşağıdaki yeni kodu yapıştır, <b>Ctrl+S</b> ile kaydet. Sonra bir kez <b>kurulum</b>'u seçip <b>▷ Çalıştır</b>'a bas ve istenen izinleri onayla. <b>Mail Yönetici'yi kurduysan</b> son olarak sağ üstte <b>Dağıt → Dağıtımları yönet → ✎ (kalem) → Sürüm: Yeni sürüm → Dağıt</b> de (adres değişmez). Bitince en alttaki düğmeye bas.</div>` : ''}
         <p class="muted">Bir kerelik kurulum, 5 dakika. Google hesabında senin adına küçük bir zamanlayıcı çalışır; ücretsizdir ve sadece senin taslaklarına bakar.</p>
         <ol class="steps">
           <li><b>Yeni proje aç.</b> <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> adresini aç (Gmail hesabınla). Sol üstteki "Adsız proje" yazısına tıklayıp adını <b>Mail Zamanlayıcı</b> yap.</li>

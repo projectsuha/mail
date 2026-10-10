@@ -25,6 +25,14 @@ async function accFetch(url) {
   return store.get('accessCache', null);
 }
 
+// Zamanlayıcıya kim olduğunu kanıtla: tarayıcıda Google kimlik kartı (maile erişim vermez).
+// Windows programında kart olmadığından eski yol (erişim anahtarı) kullanılır.
+async function accProof() {
+  const idt = typeof idToken === 'function' && idToken();
+  if (idt) return { kimlik: idt };
+  const tok = DESKTOP ? (Auth.token() || await Auth.desktopRefresh()) : null;
+  return tok ? { token: tok } : null;
+}
 // Girişten sonra çağrılır; false dönerse uygulama durur
 // Yöneticinin "Programı kullananlar" listesi için kendini bildir (en fazla saatte bir).
 // Gönderilen: e-posta (Google girişinden), ad, cihaz türü, program sürümü. Mail içeriği gönderilmez.
@@ -32,11 +40,11 @@ async function accHello() {
   const url = ACC_PUBLIC_URL();
   if (DEMO || !url || Date.now() - store.get('helloAt', 0) < 3600e3) return;
   try {
-    const tok = Auth.token() || (DESKTOP ? await Auth.desktopRefresh() : null);
-    if (!tok) return;
+    const kimlik = await accProof();
+    if (!kimlik) return;
     const d = typeof fbDevice === 'function' ? fbDevice() : {};
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ islem: 'merhaba', token: tok, ad: (typeof SIG !== 'undefined' && SIG.name) || '', cihaz: [d.Cihaz, d.Kullanım].filter(Boolean).join(' · '), surum: APP_VERSION }) });
+      body: JSON.stringify({ islem: 'merhaba', ...kimlik, ad: (typeof SIG !== 'undefined' && SIG.name) || '', cihaz: [d.Cihaz, d.Kullanım].filter(Boolean).join(' · '), surum: APP_VERSION }) });
     if ((await r.json()).tamam) store.set('helloAt', Date.now());
   } catch {}
 }

@@ -28,7 +28,7 @@
     T('L19', 'Steam <noreply@steampowered.com>', 'Sonbahar indirimi başladı', 'Binlerce oyunda büyük indirimler 9 Ekim\'e kadar devam ediyor.', 1.1 * D, { unread: true, inbox: false }),
     T('L18', 'Steam <noreply@steampowered.com>', 'Steam hesabınız: yeni cihazdan giriş', 'Steam hesabınıza Windows cihazdan giriş yapıldı. Bu siz değilseniz şifrenizi değiştirin.', 8 * H, { unread: true }),
     T('L18', 'Steam Support <support@steampowered.com>', 'Destek talebiniz yanıtlandı', 'Merhaba, talebinizle ilgili inceleme tamamlandı.', 2 * D, { unread: true }),
-    T('L10', 'Mehmet Yılmaz <mehmet.yilmaz84@gmail.com>', 'Hafta sonu planı', 'Selam! Cumartesi kahvaltıya ne dersin? Saat 10 gibi Moda\'da buluşabiliriz.\n\nMehmet', 9 * H, { starred: true }),
+    T('L10', 'Mehmet Yılmaz <mehmet.yilmaz84@gmail.com>', 'Hafta sonu planı', 'Selam! Cumartesi kahvaltıya ne dersin? Saat 10 gibi Moda\'da buluşabiliriz.\n\nMehmet', 9 * H, { starred: true, att: { filename: 'Moda_sahil.jpg', mimeType: 'image/jpeg', size: 23658, url: 'moda.jpg' } }),
     T('L7', 'Garanti BBVA <bilgilendirme@garantibbva.com.tr>', 'Hesap hareketi bildirimi', 'Sayın Sinan Erdoğan, hesabınıza 2.450,00 TL tutarında havale gelmiştir.', 11 * H),
     T('L5', 'Enerjisa <e-fatura@enerjisa.com.tr>', 'Ekim 2026 elektrik faturanız', 'Ekim dönemine ait faturanız 612,40 TL olarak oluşturulmuştur. Son ödeme: 20 Ekim.', 1.3 * D),
     T('L5', 'Türk Telekom <efatura@turktelekom.com.tr>', 'İnternet faturanız hazır', 'Ekim dönemi fatura tutarınız 449,90 TL.', 3 * D),
@@ -46,17 +46,18 @@
     T('L6', 'Findeks <bilgi@findeks.com>', 'Kredi notunuz güncellendi', 'Findeks kredi notunuz güncellendi.', 10 * D),
     T('L21', 'Yapı Kredi <bilgilendirme@yapikredi.com.tr>', 'World kart ekstreniz', 'Ekim dönemi ekstreniz hazır.', 11 * D),
     T('L12', 'Monster Notebook <bilgi@monsternotebook.com.tr>', 'Garanti kaydınız oluşturuldu', 'Tulpar T7 cihazınızın garanti kaydı oluşturuldu.', 12 * D),
-    T('L13', 'Ben <snn.erdogan98@gmail.com>', 'Not: kira artışı', 'Kira artışı Ocak\'ta %TÜFE oranında olacak, sözleşmeyi kontrol et.', 13 * D, { inbox: false }),
+    T('L13', 'Ben <project.suha.2026@gmail.com>', 'Not: kira artışı', 'Kira artışı Ocak\'ta %TÜFE oranında olacak, sözleşmeyi kontrol et.', 13 * D, { inbox: false }),
     T(null, 'LinkedIn <messages-noreply@linkedin.com>', 'Bu hafta profilini 12 kişi görüntüledi', 'Profilini görüntüleyenleri gör.', 4 * H, { unread: true })
   ];
-  raw.push(T('L13', 'Ben <snn.erdogan98@gmail.com>', 'Alışveriş listesi', 'Süt, yumurta, kahve, deterjan, pil (AA)', 2 * D, { inbox: false }));
-  raw.push(T('L13', 'Ben <snn.erdogan98@gmail.com>', 'Tatil fikirleri', 'Kaş, Kalkan, Bozcaada. Haziran başı uygun. Otel yerine ev kiralamayı düşün.', 6 * D, { inbox: false }));
+  raw.push(T('L13', 'Ben <project.suha.2026@gmail.com>', 'Alışveriş listesi', 'Süt, yumurta, kahve, deterjan, pil (AA)', 2 * D, { inbox: false }));
+  raw.push(T('L13', 'Ben <project.suha.2026@gmail.com>', 'Tatil fikirleri', 'Kaş, Kalkan, Bozcaada. Haziran başı uygun. Otel yerine ev kiralamayı düşün.', 6 * D, { inbox: false }));
   raw.push(T(null, 'Ali Veli <ali.veli@ornekfirma.com>', 'Davet: Proje toplantısı', 'Proje toplantısına davetlisiniz. Gündem: yeni sürüm planı.', 5 * H, { unread: true, ics: true }));
   raw.push(T(null, 'Ayşe Kaya <ayse.kaya@ornekajans.com>', 'Web sitesi yenileme teklifi', 'Merhaba Sinan Bey,\n\nGeçen hafta konuştuğumuz web sitesi yenileme işi için teklifimizi ekte Word dosyası olarak gönderiyorum. Uygun görürseniz sözleşmeyi hazırlayalım.\n\nİyi çalışmalar,\nAyşe Kaya\nÖrnek Ajans', 2.5 * H, { unread: true,
     att: { filename: 'Web_Sitesi_Teklifi.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 38051, url: 'teklif.docx' } }));
   raw.push(T(null, 'Can Demir <can.demir@ornekfirma.com>', 'Ekim bütçesi ve proje sunumu', 'Selam Sinan,\n\nEkim bütçesinin son halini ve yarınki toplantı için sunumu ekledim. Bir göz atarsan sevinirim.\n\nCan', 3.2 * H, { unread: true,
-    att: [{ filename: 'Ekim_Butcesi.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 8205, url: 'butce.xlsx' },
+    att: [{ filename: 'Ekim_Butcesi.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 8212, url: 'butce.xlsx' },
           { filename: 'Proje_Sunumu.pptx', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: 30366, url: 'sunum.pptx' }] }));
+  raw.push(T(null, 'Örnek Mağaza <haber@ornekmagaza.com>', 'Sonbahar fırsatları: öğrencilere özel indirim', 'Sonbahar fırsatları\nÖğrencilere özel indirim, 31 Ekim’e kadar.\nhttps://c.example.com/r?v=2&a=1zIdgxRYc2DtYV9mVx1rKVlLY4S3XP4jfdSiAIA8JV%2Bou1H33Ci8Wvt8KMFkb4q86g4p3hH25B617pYYD%2BxMSHr2fzM9q57Vq3c5Ho1UxyQ77Jb\nAlışveriş yapın\nhttps://c.example.com/r?v=2&a=1zIdgxRYc2DtYV9mVx1rKVlLY4S3XP4jfdSiAIA8JV%2Bou1H33Ci8Wvt8KMFkb4q86g4p3hH25B617pYYD%2BxMSHr2fzM9q57Vq3c5Ho\nMağazayı bul\nhttps://c.example.com/r?v=2&a=1zIdgxRYc2DtYV9mVx1rKVlLY4S3XP4jfdSiAIA8JV%2Bou1H33Ci8Wvt8KMFkb4q86g4p3hH25B617pYYD%2BxMSHr2fzM9q57Vq3c5Ho1Uxy', 4.5 * H, { unread: true, html: '<html><head><style>.mob{display:none!important;max-height:0;overflow:hidden}@media (max-width:480px){.desk{display:none!important}.mob{display:block!important;max-height:none!important}}</style></head><body style="margin:0;background:#000"><table width="640" align="center" style="background:#000;color:#fff;font-family:Arial"><tr><td style="padding:28px;text-align:center"><h1 style="margin:0 0 6px;font-size:30px">Sonbahar fırsatları</h1><p style="color:#bbb;margin:0 0 20px">Öğrencilere özel indirim, 31 Ekim’e kadar.</p><img class="desk" src="moda.jpg" width="584" style="display:block;width:584px;border-radius:14px" alt="Kampanya"><div class="mob" style="display:none;max-height:0;overflow:hidden"><img src="moda.jpg" width="300" style="width:100%;border-radius:14px" alt="Kampanya"></div><p style="margin:22px 0 0"><a href="https://example.com/kampanya?utm_source=mail&amp;utm_medium=email&amp;utm_campaign=sonbahar2026&amp;tracking=AbCdEfGhIjKlMnOpQrStUvWxYz0123456789" style="background:#0071e3;color:#fff;padding:10px 22px;border-radius:20px;text-decoration:none">Alışveriş yapın</a></p></td></tr></table></body></html>' }));
   // Taramada çakışma göstermek için: Garanti ve Annem Garanti aynı adresten
   raw.push(T('L8', 'Garanti BBVA <bilgilendirme@garantibbva.com.tr>', 'Eylül ekstreniz – Ayşe Erdoğan', 'Sayın Ayşe Erdoğan, Eylül dönemi ekstreniz hazırlanmıştır.', 30 * D, { inbox: false }));
   raw.push(T('L7', 'Garanti BBVA <bilgilendirme@garantibbva.com.tr>', 'Bonus puan kazandınız', 'Sayın Sinan Erdoğan, 120 bonus kazandınız.', 20 * D, { inbox: false }));
@@ -69,7 +70,7 @@
   let filters = [{ id: 'f1', criteria: { from: 'enerjisa.com.tr' }, action: { addLabelIds: ['L5'] } }];
   const wait = (v, ms = 220) => new Promise(r => setTimeout(() => r(v), ms));
   const addr = s => { const m = s.match(/^(.*?)<([^>]+)>/); return m ? { name: m[1].trim(), email: m[2] } : { name: s, email: s }; };
-  const me = 'snn.erdogan98@gmail.com';
+  const me = 'project.suha.2026@gmail.com';
 
   function summary(t) {
     const f = addr(t.msg.from);
@@ -136,7 +137,7 @@
         subject: t.msg.subject, date: t.msg.date, authResults: t.msg.auth || '', messageId: '<' + id + '@demo>', references: '', snippet: t.msg.text,
         ics: t.msg.ics ? icsFor() : '', icsAtt: null,
         html: t.msg.html || '', text: t.msg.text, inline: [], noteUuid: t.msg.uuid || '', noteCreated: t.msg.created || '',
-        attachments: t.msg.att ? [].concat(t.msg.att) : /ekstre|fatura|özet/i.test(t.msg.subject) ? [{ filename: 'ekstre_ekim_2026.pdf', mimeType: 'application/pdf', size: 184320, data: btoa('demo') }] : []
+        attachments: t.msg.att ? [].concat(t.msg.att) : /ekstre|fatura|özet/i.test(t.msg.subject) ? [{ filename: 'ekstre_ekim_2026.pdf', mimeType: 'application/pdf', size: 44309, url: 'ekstre_ekim_2026.pdf' }] : []
       }] });
     },
     modifyThread: (id, add = [], remove = []) => {
@@ -159,7 +160,7 @@
       return wait({ id: id + 'm', threadId: id });
     },
     trashThread: id => { const t = threads.find(x => x.id === id); t.labelIds = ['TRASH']; return wait({}); },
-    send: () => wait({ id: 'sent' }, 600),
+    send: msg => { window.__lastSent = msg; return wait({ id: 'sent' }, 600); },
     attachment: () => wait(btoa('demo')),
     filters: () => wait(filters.map(f => ({ ...f }))),
     createFilter: (criteria, action) => { const f = { id: 'f' + Math.random().toString(36).slice(2, 7), criteria, action }; filters.push(f); return wait(f); },
