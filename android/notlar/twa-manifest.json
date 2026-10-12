@@ -1,0 +1,62 @@
+{
+  "packageId": "io.github.projectsuha.notlar",
+  "host": "projectsuha.github.io",
+  "name": "Notlar",
+  "launcherName": "Notlar",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#26282C",
+  "themeColorDark": "#26282C",
+  "navigationColor": "#26282C",
+  "navigationColorDark": "#26282C",
+  "navigationDividerColor": "#26282C",
+  "navigationDividerColorDark": "#26282C",
+  "backgroundColor": "#E8EAED",
+  "enableNotifications": true,
+  "startUrl": "/mail/notlar.html",
+  "iconUrl": "https://projectsuha.github.io/mail/notlar-512.png?v=1",
+  "maskableIconUrl": "https://projectsuha.github.io/mail/notlar-maskable.png?v=1",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "../suha.keystore",
+    "alias": "suha"
+  },
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "appVersion": "1",
+  "shortcuts": [
+    {
+      "name": "Yeni not",
+      "shortName": "Yeni not",
+      "url": "https://projectsuha.github.io/mail/notlar.html?yeni",
+      "chosenIconUrl": "https://projectsuha.github.io/mail/notlar-192.png?v=1"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://projectsuha.github.io/mail/notlar.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://projectsuha.github.io/mail/",
+  "minSdkVersion": 21,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "displayOverride": [],
+  "shareTarget": {
+    "action": "https://projectsuha.github.io/mail/notlar.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
