@@ -20,6 +20,7 @@ function ctxBuild(t, multi) {
     return `<div class="ctx-title">${SEL.size} konu seçili</div>
       ${S.labelId !== 'TRASH' && S.labelId !== 'SPAM' ? ctxItem('m-archive', IC.archive, 'Arşivle') : ''}
       ${ctxItem(anyUnread ? 'm-read' : 'm-unread', anyUnread ? IC.mail : IC.unread, anyUnread ? 'Okundu yap' : 'Okunmadı yap')}
+      ${ctxMoveTargets().length ? ctxItem('m-move', IC.folder, 'Taşı', 'data-sub="move"') : ''}
       ${ctxItem('m-labels', IC.tag, 'Etiketle…')}
       ${ctxSep}
       ${S.labelId === 'SPAM' ? ctxItem('m-notspam', IC.check, 'Spam değil') : ctxItem('m-spam', IC.block, 'Spam olarak işaretle')}
@@ -29,15 +30,16 @@ function ctxBuild(t, multi) {
   }
   const inbox = t.labelIds.includes('INBOX'), trash = S.labelId === 'TRASH', spam = S.labelId === 'SPAM';
   const snooze = typeof snPresets === 'function' && !trash && !spam;
-  return `<div class="ctx-title">${esc(t.from || t.fromEmail || '')}</div>
-    ${ctxItem('open', IC.mail, 'Aç')}
+  return `${ctxItem('open', IC.mail, 'Aç')}
     ${ctxItem('reply', IC.reply, 'Yanıtla')}
     ${ctxItem('forward', IC.forward, 'İlet')}
     ${ctxSep}
     ${ctxItem(t.unread ? 'read' : 'unread', t.unread ? IC.mail : IC.unread, t.unread ? 'Okundu yap' : 'Okunmadı yap')}
     ${ctxItem('star', t.starred ? IC.starFill : IC.star, t.starred ? 'Yıldızı kaldır' : 'Yıldızla')}
     ${inbox ? ctxItem('archive', IC.archive, 'Arşivle') : (!trash && !spam ? ctxItem('inbox', IC.inbox, 'Gelen kutusuna taşı') : '')}
+    ${ctxMoveTargets().length ? ctxItem('move', IC.folder, 'Taşı', 'data-sub="move"') : ''}
     ${ctxItem('labels', IC.tag, 'Etiketle…')}
+    ${ctxItem('tonote', IC.note, 'Not olarak kaydet')}
     ${snooze ? ctxItem('snooze', IC.alarm, 'Ertele', 'data-sub="snooze"') : ''}
     ${ctxItem('select', IC.check, 'Seç')}
     ${ctxSep}
@@ -68,25 +70,52 @@ function ctxOpen(row, x, y) {
     const it = e.target.closest('[data-ctx]');
     if (!it) return;
     if (it.dataset.sub === 'snooze') return ctxSnooze(menu, it, t);
+    if (it.dataset.sub === 'move') return ctxMoveMenu(menu, it);
     if (it.dataset.when) { ctxClose(); return snSnooze(t.id, +it.dataset.when); }
+    if (it.dataset.to) { ctxClose(); return ctxMove(multi ? [...SEL] : [t.id], it.dataset.to); }
     ctxClose();
     ctxRun(it.dataset.ctx, t);
   });
 }
 
-// Ertele alt menüsü (menünün yanında açılır)
-function ctxSnooze(menu, it, t) {
+// Taşı: gelen kutusu ve kullanıcı etiketleri (bulunulan yer ve Notlar hariç)
+function ctxMoveTargets() {
+  const notes = typeof notesLabel === 'function' ? notesLabel() : null;
+  const list = [];
+  if (S.labelId !== 'INBOX') list.push({ id: 'INBOX', name: 'Gelen Kutusu', icon: IC.inbox });
+  for (const l of userLabels()) if (l.id !== S.labelId && (!notes || l.id !== notes.id)) list.push({ id: l.id, name: l.name, icon: IC.tag });
+  return list;
+}
+function ctxMoveMenu(menu, it) {
+  ctxSubOpen(menu, it, `<div class="ctx-title">Taşı</div><div class="ctx-scroll">` + ctxMoveTargets().map(x =>
+    `<button type="button" class="ctx-item" data-ctx="mv" data-to="${esc(x.id)}">${x.icon}<span>${esc(x.name)}</span></button>`).join('') + '</div>');
+}
+async function ctxMove(ids, target) {
+  if (ids.length === 1) return dropOnto(ids[0], target);
+  let ok = 0;
+  for (const id of ids) if (await dropOnto(id, target, true)) ok++;
+  if (typeof selClear === 'function') selClear();
+  const name = target === 'INBOX' ? 'Gelen Kutusu' : shortName(S.labelById[target] || { name: '' });
+  toast(ok === ids.length ? `${ok} konu ${name} klasörüne taşındı` : `${ok}/${ids.length} konu taşındı`);
+}
+
+// Alt menü (menünün yanında açılır)
+function ctxSubOpen(menu, it, html) {
   menu.querySelector('.ctx-sub')?.remove();
   const sub = document.createElement('div');
   sub.className = 'ctx-menu ctx-sub sched-pop';
-  sub.innerHTML = `<div class="ctx-title">Ertele</div>` + snPresets().map(([n, v]) =>
-    `<button type="button" class="ctx-item" data-ctx="snz" data-when="${v}"><i></i><span>${n}</span><small>${esc(schedWhen(v))}</small></button>`).join('')
-    + ctxItem('snooze-pick', IC.clock, 'Tarih ve saat seç…');
+  sub.innerHTML = html;
   menu.appendChild(sub);
   const r = it.getBoundingClientRect(), mr = menu.getBoundingClientRect();
   const right = mr.right + sub.offsetWidth + 6 < innerWidth;
   sub.style.left = (right ? mr.width + 4 : -sub.offsetWidth - 4) + 'px';
-  sub.style.top = Math.min(r.top - mr.top - 8, innerHeight - mr.top - sub.offsetHeight - 8) + 'px';
+  sub.style.top = Math.max(8 - mr.top, Math.min(r.top - mr.top - 8, innerHeight - mr.top - sub.offsetHeight - 8)) + 'px';
+}
+// Ertele alt menüsü
+function ctxSnooze(menu, it, t) {
+  ctxSubOpen(menu, it, `<div class="ctx-title">Ertele</div>` + snPresets().map(([n, v]) =>
+    `<button type="button" class="ctx-item" data-ctx="snz" data-when="${v}"><i></i><span>${n}</span><small>${esc(schedWhen(v))}</small></button>`).join('')
+    + ctxItem('snooze-pick', IC.clock, 'Tarih ve saat seç…'));
 }
 
 async function ctxRun(act, t) {
@@ -109,6 +138,7 @@ async function ctxRun(act, t) {
       return;
     }
     case 'labels': return openSelLabels(one);
+    case 'tonote': return saveMailAsNote(id);
     case 'select': return selToggle(id);
     case 'snooze-pick': return withThread(() => { const b = document.querySelector('.reader-bar [data-action="snooze"]'); if (b) openSnoozeMenu(b); });
     case 'from':

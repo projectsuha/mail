@@ -193,6 +193,7 @@ const IC = {
   alert: svg('<path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.5"/>'),
   trash: svg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
   block: svg('<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>'),
+  folder: svg('<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2.2h8.8A1.5 1.5 0 0 1 21 8.7V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>'),
   archive: svg('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>'),
   unread: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none"/>'),
   tag: svg('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>'),
@@ -214,6 +215,8 @@ const IC = {
   caret: svg('<path d="m9 6 6 6-6 6"/>', 'class="caret-ic"'),
   check: svg('<path d="m5 12 5 5L20 7"/>'),
   alarm: svg('<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M4 5.5 7 3M20 5.5 17 3"/>'),
+  user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>'),
+  // (Notlar uygulamasındaki ek simgeler notes-app.js'te)
   shield: svg('<path d="M12 3 5 6v5c0 4.4 3 8.4 7 10 4-1.6 7-5.6 7-10V6z"/><path d="m9 12 2 2 4-4"/>'),
 };
 // Etiket rozeti: zemin etiketin rengi, yazı rengi zemine göre otomatik (koyu zeminde beyaz, açıkta siyah)
@@ -240,11 +243,13 @@ const DESKTOP = !!(window.mailDesktop && !DEMO);
 // Zamanlayıcıya kimlik kanıtı olarak bu gönderilir (erişim anahtarı değil).
 const rnd = (n = 16) => [...crypto.getRandomValues(new Uint8Array(n))].map(b => b.toString(16).padStart(2, '0')).join('');   // tahmin edilemez rastgele değer (giriş doğrulaması için)
 const jwtBody = t => { try { return JSON.parse(new TextDecoder().decode(b64urlToBytes(t.split('.')[1]))); } catch { return null; } };
-function keepIdToken(idt, nonce) {
+function keepIdToken(idt, nonce, exact) {
   const b = idt && jwtBody(idt);
-  // Aynı Google projesinin istemcisi olmalı (web sitesi ya da Windows programı)
+  // Aynı Google projesinin istemcisi olmalı (web sitesi ya da Windows programı); web girişinde birebir bizim istemcimiz
   const proj = CLIENT_ID.split('-')[0];
   if (!b || (nonce && b.nonce !== nonce) || !proj || !String(b.aud || '').startsWith(proj + '-')) return false;
+  if (exact && b.aud !== CLIENT_ID) return false;
+  if (!/^(https:\/\/)?accounts\.google\.com$/.test(b.iss || '') || !(b.exp * 1000 > Date.now())) return false;
   store.set('idt', { t: idt, exp: b.exp * 1000 });
   return true;
 }
@@ -254,7 +259,7 @@ const keepDesktopToken = t => { if (t?.token) store.set('auth', { token: t.token
 // Çıkış yapınca bu cihazda kişisel hiçbir şey kalmasın (ortak bilgisayar için).
 // Kalanlar yalnızca görünüm ve kullanım tercihleri.
 const KEEP_KEYS = ['theme', 'undoSend', 'keyMap', 'keysOn', 'keyGoPrefix', 'ctxMenu', 'imgProxyAll', 'blockTrackers', 'calMode', 'collapsed',
-  'unreadBadge', 'notifyMail', 'trkCount'];
+  'unreadBadge', 'notifyMail', 'trkCount', 'loginGuide'];
 function wipePersonal() {
   try {
     for (const k of Object.keys(localStorage)) if (!KEEP_KEYS.includes(k) && k !== 'yonTab') localStorage.removeItem(k);   // Yönetici oturumu da
@@ -269,7 +274,11 @@ const Auth = {
   redirectUri() { return location.origin + location.pathname.replace(/index\.html$/, ''); },
   token() {
     const t = store.get('auth');
-    return t && t.exp > Date.now() + 30000 ? t.token : null;
+    if (!t || !(t.exp > Date.now() + 30000)) return null;
+    // Aynı adresteki başka bir uygulamanın (ör. Pano) anahtarı bu uygulamanın iznini taşımıyorsa kullanma
+    const need = window.APP_NEED_SCOPE || 'https://www.googleapis.com/auth/gmail.modify';
+    if (t.scope && !(' ' + t.scope + ' ').includes(' ' + need + ' ')) return null;
+    return t.token;
   },
   login(silent) {
     if (DESKTOP) {
@@ -284,7 +293,7 @@ const Auth = {
     if (silent) store.set('silentAt', Date.now());
     const p = new URLSearchParams({
       client_id: CLIENT_ID, redirect_uri: this.redirectUri(), response_type: 'token id_token',
-      scope: SCOPES, include_granted_scopes: 'true', state, nonce: this.nonce()
+      scope: window.APP_SCOPES || SCOPES, include_granted_scopes: 'true', state, nonce: this.nonce()
     });
     const hint = store.get('email');
     if (hint) p.set('login_hint', hint);
@@ -292,6 +301,22 @@ const Auth = {
     location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
   },
   nonce() { const n = rnd(); store.set('oauthNonce', n); return n; },
+  // Google'a sor: bu anahtar gerçekten bizim programımıza mı verildi, Gmail izni var mı, kimin hesabı?
+  async verify() {
+    const t = store.get('auth');
+    if (!t) return 'kimlik';
+    try {
+      const r = await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(t.token));
+      const j = await r.json();
+      if (!r.ok || (j.aud !== CLIENT_ID && j.azp !== CLIENT_ID)) return 'kimlik';
+      const idb = jwtBody(store.get('idt')?.t || '');
+      if (idb?.email && j.email && idb.email.toLowerCase() !== j.email.toLowerCase()) return 'kimlik';
+      const sc = ' ' + (j.scope || '') + ' ';
+      if (!sc.includes(' ' + (window.APP_NEED_SCOPE || 'https://www.googleapis.com/auth/gmail.modify') + ' ')) return 'izin';
+      store.set('auth', { ...t, scope: j.scope || t.scope });
+      return 'ok';
+    } catch { return 'ok'; }   // Google'a ulaşılamadıysa engelleme; Gmail istekleri zaten anahtarı kendisi doğrular
+  },
   // Google'dan dönüşte adres çubuğundaki #access_token=... kısmını okur
   handleRedirect() {
     if (!location.hash.includes('state=')) return null;
@@ -300,9 +325,11 @@ const Auth = {
     if (h.get('state') !== store.get('oauthState')) return 'state';
     store.del('oauthState');
     if (h.get('access_token')) {
-      store.set('auth', { token: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000, scope: h.get('scope') || '' });
-      keepIdToken(h.get('id_token'), store.get('oauthNonce'));
+      const nonce = store.get('oauthNonce');
       store.del('oauthNonce'); store.del('silentAt');
+      // Kimlik kartı bu girişe ait değilse (başka bir yerden gelmiş anahtar) girişi kabul etme
+      if (!keepIdToken(h.get('id_token'), nonce, true)) { store.del('idt'); return 'kimlik'; }
+      store.set('auth', { token: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000, scope: h.get('scope') || '' });
       return 'ok';
     }
     return h.get('error') || 'error';
@@ -621,13 +648,57 @@ function showSetup() {
 }
 
 function showLogin(msg) {
+  const pt = (ic, t, d) => `<li>${ic}<div><b>${t}</b><span>${d}</span></div></li>`;
   $('#app').innerHTML = `
-  <div class="center-screen">
+  <div class="center-screen login-screen">
     <div class="brand-mark">${IC.mail}</div>
     <h1>Mail</h1>
-    <p>Gmail hesabınla giriş yap. Mailler sadece bu cihazda görüntülenir, başka bir yere gönderilmez.</p>
+    <p class="login-sub">Gmail için sade ve güvenli bir program · Bir Suha projesi</p>
     ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
-    <button class="btn primary" data-action="login">Google ile giriş yap</button>
+    <button class="btn primary login-btn" data-action="login-start">Google ile giriş yap</button>
+    <ul class="trust">
+      ${pt(IC.shield, 'Şifren bize hiç gelmez', 'Giriş Google\'ın kendi sayfasında yapılır. Adres çubuğunda <b>accounts.google.com</b> yazdığından emin ol.')}
+      ${pt(IC.mail, 'Mailler sadece bu cihazda', 'Sunucumuz yok. Mailler Google\'dan doğrudan bu cihaza gelir, başka hiçbir yere gönderilmez.')}
+      ${pt(IC.logout, 'İzni istediğin an geri al', 'Çıkış yapınca bu cihazdaki kişisel her şey silinir. Erişimi Google hesabından da kaldırabilirsin.')}
+    </ul>
+    <details class="perm-list">
+      <summary>Hangi izinleri istiyoruz, neden?</summary>
+      <ul>
+        <li><b>Gmail – okuma ve düzenleme:</b> mailleri göstermek, göndermek, arşivlemek, etiketlemek, çöpe atmak. Mailleri kalıcı olarak silme izni istemiyoruz.</li>
+        <li><b>Gmail ayarları:</b> imzan ve otomatik etiketleme kuralların.</li>
+        <li><b>Takvim etkinlikleri:</b> takvimini göstermek ve etkinlik eklemek.</li>
+        <li><b>Adın ve e-posta adresin:</b> hangi hesapla girdiğini bilmek için.</li>
+        <li><b>Google Drive</b> girişte istenmez; sadece bir eki Drive'a kaydetmek ya da PDF'e çevirmek istediğinde ayrıca sorulur ve yalnızca programın oluşturduğu dosyalara erişir.</li>
+      </ul>
+    </details>
+    <div class="login-links">
+      <a href="#" data-action="login-guide">Giriş adımlarını göster</a> ·
+      <a href="gizlilik.html" target="_blank" rel="noopener">Gizlilik</a> ·
+      <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google'da erişimi yönet</a>
+    </div>
+  </div>`;
+}
+
+// Google'ın göstereceği ekranları önceden anlatır (özellikle "doğrulanmadı" uyarısını)
+function showLoginGuide(thenLogin) {
+  const st = (n, t, d) => `<li><i>${n}</i><div><b>${t}</b><span>${d}</span></div></li>`;
+  $('#modal').innerHTML = `
+  <div class="modal-bg">
+    <div class="sheet login-guide">
+      <header class="sheet-head">
+        <button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button>
+        <h3>Google'da göreceğin ekranlar</h3>
+      </header>
+      <div class="set-body">
+        <ol class="guide-steps">
+          ${st(1, 'Hesabını seç', 'Gmail hesabını seç ya da giriş yap. Sayfanın adresi <b>accounts.google.com</b> olmalı; değilse devam etme.')}
+          ${st(2, '"Google bu uygulamayı doğrulamadı" uyarısı', 'Bu beklenen bir uyarı. Google\'ın onay rozeti, Gmail kullanan programlar için yılda binlerce dolarlık bir güvenlik denetimi istiyor; Suha ücretsiz, küçük bir proje olduğu için bu denetimden geçmedi. Devam etmek için <b>Gelişmiş</b>\'e bas. Açılan yazıda geliştirici olarak <b>project.suha.2026@gmail.com</b> görünmeli; başka bir adres görürsen devam etme. Sonra en alttaki <b>“… uygulamasına git (güvenli değil)”</b> bağlantısına bas.')}
+          ${st(3, 'İzinleri onayla', 'Listelenen kutuların <b>hepsini işaretli</b> bırak ve <b>Devam</b>\'a bas. Gmail kutusunun işareti kalkarsa program çalışamaz.')}
+        </ol>
+        <p class="muted sm">Bu adımlar sadece ilk girişte ya da izinleri kaldırdıktan sonra çıkar. Sonraki girişlerde Google seni doğrudan geri gönderir.</p>
+        ${thenLogin ? `<div class="sticky-actions"><button class="btn primary" data-action="login">Anladım, devam et</button></div>` : ''}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -828,6 +899,7 @@ function readerButtons() {
     <button class="icon-btn" data-action="trash" title="Sil">${IC.trash}</button>
     <button class="icon-btn ${t && typeof snWhenOf === 'function' && snWhenOf(t) ? 'on' : ''}" data-action="snooze" title="Ertele">${IC.alarm}</button>
     <button class="icon-btn" data-action="mark-unread" title="Okunmadı yap">${IC.unread}</button>
+    <button class="icon-btn" data-action="mail-to-note" title="Not olarak kaydet">${IC.note}</button>
     <button class="icon-btn ${starred ? 'on' : ''}" data-action="star" title="Yıldızla">${starred ? IC.starFill : IC.star}</button>
     <button class="icon-btn" data-action="labels" title="Etiketler">${IC.tag}</button>
     <button class="icon-btn" data-action="block" title="Göndericiyi engelle">${IC.block}</button>
@@ -982,6 +1054,19 @@ async function flushNote() {
   S.note = null;                 // ekrandan hemen ayır; kaydetme arka planda bitsin
   clearTimeout(n.timer);
   if (n.dirty) await saveNote(n);
+}
+
+// Mail'i Notlar'a kaydet (kargo, rezervasyon, adres…): gönderen, tarih ve metniyle yeni not
+async function saveMailAsNote(threadId) {
+  try {
+    const t = S.thread?.id === threadId ? S.thread : await Gmail.getThread(threadId);
+    const m = t.messages[t.messages.length - 1];
+    const who = m.from ? `${m.from} <${m.fromEmail}>` : m.fromEmail;
+    const html = `<div><b>Gönderen:</b> ${esc(who || '')}</div><div><b>Tarih:</b> ${esc(fmtDate(m.date, true))}</div><div><br></div>` + textToHtml(mailText(m, 30000));
+    const n = { title: m.subject || '(konu yok)', html: sanitizeNoteHtml(html), uuid: (crypto.randomUUID ? crypto.randomUUID() : rnd()).toUpperCase(), created: new Date().toUTCString().replace('GMT', '+0000') };
+    await Gmail.insertNote(buildNoteRaw(n).raw, [await notesLabelId()]);
+    toast('Not olarak kaydedildi', [['Notlar\'da aç', () => window.open('notlar.html', '_blank', 'noopener')]], 5000);
+  } catch (e) { if (!(e instanceof AuthError)) toast('Not olarak kaydedilemedi: ' + e.message); }
 }
 
 function newNote() {
@@ -1782,7 +1867,9 @@ function toast(html, actions = [], ms = 3500) {
 /* ───────────── Olaylar ───────────── */
 
 const ACTIONS = {
-  login: () => Auth.login(false),
+  login: () => { store.set('loginGuide', 1); closeModal(); Auth.login(false); },
+  'login-start': () => store.get('loginGuide') ? Auth.login(false) : showLoginGuide(true),
+  'login-guide': (el, e) => { e?.preventDefault(); showLoginGuide(false); },
   logout: () => { if (DEMO) location.href = location.pathname; else Auth.logout(); },
   'open-drawer': () => $('#shell').classList.add('drawer'),
   'close-drawer': () => $('#shell').classList.remove('drawer'),
@@ -1809,6 +1896,7 @@ const ACTIONS = {
   'clear-search': () => { $('#search').value = ''; if (S.q) { S.q = ''; loadList(); renderSidebar(); } },
   more: () => loadList(true),
   'open-thread': el => openThread(el.dataset.id),
+  'mail-to-note': () => S.threadId && saveMailAsNote(S.threadId),
   back: () => { if (history.state?.v) history.back(); else closeReader(); },
   'toggle-msg': el => {
     const id = el.closest('.msg').dataset.mid;
@@ -2010,7 +2098,7 @@ document.addEventListener('drop', async e => {
   await dropOnto(id, nav.dataset.id);
 });
 
-async function dropOnto(threadId, target) {
+async function dropOnto(threadId, target, quiet = false) {
   const t = S.threads.find(x => x.id === threadId);
   if (!t) return;
   const from = S.labelId;
@@ -2022,7 +2110,7 @@ async function dropOnto(threadId, target) {
     } else if (target === 'STARRED') {
       await Gmail.modifyThread(threadId, ['STARRED'], []);
       markLocal(threadId, ['STARRED'], []);
-      toast('Yıldızlandı'); return;
+      if (!quiet) toast('Yıldızlandı'); return;
     } else {
       // Gmail'deki gibi "taşı": yeni etiketi ekle, bulunduğu yerden (gelen kutusu ya da önceki etiket) çıkar
       const remove = [];
@@ -2036,10 +2124,11 @@ async function dropOnto(threadId, target) {
     }
     if (S.threadId === threadId && !S.threads.some(x => x.id === threadId)) closeReader();
     renderList(); refreshCountsSoon();
+    if (quiet) return true;
     if (S.labelById[target]?.type === 'user') {
       offerRule({ messages: [{ fromEmail: t.fromEmail }] }, target);
     } else toast(`${name} klasörüne taşındı`);
-  } catch (err) { if (!(err instanceof AuthError)) toast('Taşınamadı: ' + err.message); }
+  } catch (err) { if (quiet) return false; if (!(err instanceof AuthError)) toast('Taşınamadı: ' + err.message); }
 }
 
 document.addEventListener('click', e => {
@@ -2092,8 +2181,14 @@ function boot() {
   const r = Auth.handleRedirect();
   if (r && r !== 'ok') {
     // Sessiz yenileme başarısız oldu ya da kullanıcı izin vermedi
-    return showLogin(r === 'access_denied' ? 'Giriş iptal edildi.' : (r === 'state' ? '' : 'Tekrar giriş yapman gerekiyor.'));
+    return showLogin(r === 'access_denied' ? 'Giriş iptal edildi.' : r === 'kimlik' ? 'Giriş doğrulanamadı, güvenliğin için kabul edilmedi. Tekrar giriş yap.' : (r === 'state' ? '' : 'Tekrar giriş yapman gerekiyor.'));
   }
+  if (r === 'ok') return Auth.verify().then(v => {
+    if (v === 'ok') return start();
+    store.del('auth'); store.del('idt');
+    if (v === 'izin') return showLogin(window.APP_NEED_TEXT || 'Gmail iznini vermedin. Program maillerini okuyup düzenleyebilmek için bu izne ihtiyaç duyuyor; tekrar girişte izin ekranındaki kutuların hepsini işaretli bırak.');
+    showLogin('Giriş doğrulanamadı, güvenliğin için kabul edilmedi. Tekrar giriş yap.');
+  });
   if (Auth.token()) start();
   else if (store.get('email') && Date.now() - store.get('silentAt', 0) > 60000) Auth.login(true);
   else showLogin();

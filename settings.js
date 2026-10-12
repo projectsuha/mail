@@ -16,82 +16,73 @@ function openSettings() {
   const calMode = store.get('calMode', 'month');
   const customColors = Object.keys(store.get('labelColors', {})).length;
   const sw = (key, on) => `<button class="switch ${on ? 'on' : ''}" data-action="set-toggle" data-k="${key}" role="switch" aria-checked="${on}"><i></i></button>`;
+  const sec = (title, body) => `<section><h4>${title}</h4>${body}</section>`;
+  const has = f => typeof window[f] === 'function';
+  const schedTxt = !store.get('schedScript') ? 'Kurulu değil: zamanlanmış postalar ve ertelenen mailler sadece uygulama açıkken işlenir'
+    : store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? '<b class="upd">Yeni sürüm var.</b> Erteleme ve gizlilik için zamanlayıcı kodunu güncelle.'
+    : 'Kurulu ve güncel: cihazların kapalıyken de çalışır';
+  const TABS = [
+    ['genel', 'Genel', IC.gear, () =>
+      sec('Görünüm', `<div class="theme-grid">${THEMES.map(([k, name, desc]) => `
+          <button class="theme-opt ${theme === k ? 'on' : ''}" data-action="set-theme" data-t="${k}">
+            <span class="theme-prev tp-${k}"><i></i><b></b><b></b></span>
+            <span class="theme-name">${name}${theme === k ? IC.check : ''}</span>
+            <span class="theme-desc">${desc}</span>
+          </button>`).join('')}</div>`)
+      + sec('Takvim', `<div class="set-row"><div><b>Açılış görünümü</b><span>Takvim açıldığında</span></div>
+          <div class="seg">${[['month', 'Ay'], ['week', 'Hafta'], ['agenda', 'Ajanda']].map(([m, t]) => `<button class="${calMode === m ? 'on' : ''}" data-action="set-calmode" data-m="${m}">${t}</button>`).join('')}</div></div>`)
+      + (has('keysRow') ? sec('Klavye ve fare', keysRow() + (has('ctxRow') ? ctxRow() : '')) : '')],
+    ['bildirim', 'Bildirimler', IC.alarm, () => has('notifySection') ? notifySection() : ''],
+    ['yazma', 'Yazma ve gönderme', IC.pen, () =>
+      (has('undoSendRow') ? sec('Gönderme', undoSendRow() + (has('contactsRow') ? contactsRow() : '')) : '')
+      + (has('signatureSection') ? signatureSection() : '')
+      + sec('Yazım', `<div class="set-row"><div><b>Cümle başını büyük harfle başlat</b><span>Nokta, soru ve ünlem işaretinden sonra ve satır başında</span></div>${sw('acSentence', acOn('acSentence'))}</div>
+          <div class="set-row"><div><b>Özel isimleri büyük harfle yaz</b><span>${acLearned().length ? `Maillerindeki ${acLearned().length} kişinin adı` : 'Maillerindeki kişilerin adları'}, şehirler, ülkeler, diller. Yanlış düzeltirse hemen ← Geri silme ile geri al.</span></div>${sw('acNames', acOn('acNames'))}</div>
+          <div class="set-col"><b>Kendi kelimelerim</b><span>Hep böyle yazılmasını istediğin isimler, virgülle ayır</span>
+            <textarea id="acMine" rows="2" placeholder="Örn: Sinan Erdoğan, Enpara, Kadıköy">${esc(acMine().join(', '))}</textarea></div>`)
+      + sec('Zamanlanmış gönderim', `<div class="set-row"><div><b>Google zamanlayıcısı</b><span>${schedTxt}</span></div>
+          <button class="btn" data-action="sched-setup">${IC.clock}${!store.get('schedScript') ? 'Kur' : store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? 'Güncelle' : 'Kurulum'}</button></div>`)],
+    ['etiket', 'Klasör ve etiketler', IC.tag, () =>
+      sec('Kenar çubuğu', `<div class="set-row"><div><b>Etiketleri göster</b><span>Kapalıyken toplam okunmamış sayısı görünür</span></div>${sw('labels', labelsShown)}</div>
+          <div class="set-row"><div><b>Tüm klasörleri göster</b><span>Taslaklar, Tüm postalar, Spam, Çöp kutusu</span></div>${sw('more', moreShown)}</div>
+          <div class="set-row"><div><b>Etiket renkleri</b><span>${customColors ? `${customColors} etikete özel renk verdin` : 'Tüm etiketler Gmail renginde'}</span></div>
+            <button class="btn" data-action="set-reset-colors" ${customColors ? '' : 'disabled'}>Gmail renklerine dön</button></div>`)
+      + sec('Otomatik etiketleme', `<div class="set-row"><div><b>Kurallar ve engellenenler</b><span>${autoSummary()}</span></div>
+          <button class="btn" data-action="set-open-auto">${IC.wand}Aç</button></div>`)],
+    ['gizlilik', 'Gizlilik', IC.shield, () =>
+      sec('Gizlilik', `<div class="set-row"><div><b>Takip piksellerini engelle</b><span>Pazarlama mailleri, maili açtığını ve nereden açtığını gizlice öğrenemez.${store.get('trkCount', 0) ? ` Bugüne kadar <b>${store.get('trkCount', 0)}</b> takip pikseli engellendi.` : ''}</span></div>${sw('blockTrackers', store.get('blockTrackers', true) !== false)}</div>
+          <div class="set-row"><div><b>Sahte mail uyarısı</b><span>Banka, kurum ya da mağaza adıyla gelip adresi o kuruma ait olmayan, doğrulanamayan ya da aldatıcı link içeren maillerde kırmızı uyarı.${store.get('safeSenders', []).length ? ` Güvenli saydıkların: ${esc(store.get('safeSenders', []).join(', '))}` : ''}</span></div>
+            ${store.get('safeSenders', []).length ? '<button class="btn" data-action="phish-reset">Güvenli listesini temizle</button>' : ''}</div>
+          <div class="set-row"><div><b>Resimleri gizli yükle</b><span>Maildeki resimler aracı bir sunucu (images.weserv.nl) üzerinden gelir; gönderen IP adresini ve konumunu göremez. Resimler biraz yavaş açılabilir.</span></div>${sw('imgProxyAll', store.get('imgProxyAll', false) === true)}</div>`)],
+    ['hesap', 'Hesap ve uygulama', IC.user || IC.mail, () =>
+      sec('Hesap', `<div class="set-row"><div><b>${esc(S.email || '')}</b><span>Gmail ve Google Takvim bu hesapla bağlı</span></div>
+          <button class="btn" data-action="logout">${IC.logout}Çıkış yap</button></div>`)
+      + sec('Uygulama', `${has('aboutRow') ? aboutRow() : `<div class="set-row"><div><b>Sürüm ${APP_VERSION}</b></div></div>`}
+          ${has('feedbackRow') ? feedbackRow() : ''}
+          <div class="set-row"><div><b>Yenile ve güncelle</b><span>Eski sürüm görünüyorsa önbelleği temizler; giriş ve ayarların kalır</span></div>
+            <button class="btn" data-action="set-hard-reload">${IC.refresh}Yenile</button></div>`)]
+  ].filter(t => t[0] !== 'bildirim' || has('notifySection'));
+  let tab = store.get('setTab', 'genel');
+  if (!TABS.some(t => t[0] === tab)) tab = 'genel';
+  const cur = TABS.find(t => t[0] === tab);
+  const upd = store.get('schedScript') && store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER;
+  const keep = $('.sheet.settings .set-body')?.dataset.tab === tab ? $('.sheet.settings .set-body').scrollTop : 0;
   $('#modal').innerHTML = `
   <div class="modal-bg">
-    <div class="sheet settings">
+    <div class="sheet settings set-tabs">
       <header class="sheet-head">
         <button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button>
         <h3>Ayarlar</h3>
       </header>
-      <div class="set-body">
-        <section>
-          <h4>Görünüm</h4>
-          <div class="theme-grid">
-            ${THEMES.map(([k, name, desc]) => `
-              <button class="theme-opt ${theme === k ? 'on' : ''}" data-action="set-theme" data-t="${k}">
-                <span class="theme-prev tp-${k}"><i></i><b></b><b></b></span>
-                <span class="theme-name">${name}${theme === k ? IC.check : ''}</span>
-                <span class="theme-desc">${desc}</span>
-              </button>`).join('')}
-          </div>
-        </section>
-        ${typeof notifySection === 'function' ? notifySection() : ''}
-        ${typeof undoSendRow === 'function' ? `<section><h4>Gönderme</h4>${undoSendRow()}${typeof contactsRow === 'function' ? contactsRow() : ''}</section>` : ''}
-        ${typeof keysRow === 'function' ? `<section><h4>Klavye ve fare</h4>${keysRow()}${typeof ctxRow === 'function' ? ctxRow() : ''}</section>` : ''}
-        ${typeof signatureSection === 'function' ? signatureSection() : ''}
-        <section>
-          <h4>Gizlilik</h4>
-          <div class="set-row"><div><b>Takip piksellerini engelle</b><span>Pazarlama mailleri, maili açtığını ve nereden açtığını gizlice öğrenemez.${store.get('trkCount', 0) ? ` Bugüne kadar <b>${store.get('trkCount', 0)}</b> takip pikseli engellendi.` : ''}</span></div>${sw('blockTrackers', store.get('blockTrackers', true) !== false)}</div>
-          <div class="set-row"><div><b>Sahte mail uyarısı</b><span>Banka, kurum ya da mağaza adıyla gelip adresi o kuruma ait olmayan, doğrulanamayan ya da aldatıcı link içeren maillerde kırmızı uyarı.${store.get('safeSenders', []).length ? ` Güvenli saydıkların: ${esc(store.get('safeSenders', []).join(', '))}` : ''}</span></div>
-            ${store.get('safeSenders', []).length ? '<button class="btn" data-action="phish-reset">Güvenli listesini temizle</button>' : ''}</div>
-          <div class="set-row"><div><b>Resimleri gizli yükle</b><span>Maildeki resimler aracı bir sunucu (images.weserv.nl) üzerinden gelir; gönderen IP adresini ve konumunu göremez. Resimler biraz yavaş açılabilir.</span></div>${sw('imgProxyAll', store.get('imgProxyAll', false) === true)}</div>
-        </section>
-        <section>
-          <h4>Kenar çubuğu</h4>
-          <div class="set-row"><div><b>Etiketleri göster</b><span>Kapalıyken toplam okunmamış sayısı görünür</span></div>${sw('labels', labelsShown)}</div>
-          <div class="set-row"><div><b>Tüm klasörleri göster</b><span>Taslaklar, Tüm postalar, Spam, Çöp kutusu</span></div>${sw('more', moreShown)}</div>
-          <div class="set-row"><div><b>Etiket renkleri</b><span>${customColors ? `${customColors} etikete özel renk verdin` : 'Tüm etiketler Gmail renginde'}</span></div>
-            <button class="btn" data-action="set-reset-colors" ${customColors ? '' : 'disabled'}>Gmail renklerine dön</button></div>
-        </section>
-        <section>
-          <h4>Yazım</h4>
-          <div class="set-row"><div><b>Cümle başını büyük harfle başlat</b><span>Nokta, soru ve ünlem işaretinden sonra ve satır başında</span></div>${sw('acSentence', acOn('acSentence'))}</div>
-          <div class="set-row"><div><b>Özel isimleri büyük harfle yaz</b><span>${acLearned().length ? `Maillerindeki ${acLearned().length} kişinin adı` : 'Maillerindeki kişilerin adları'}, şehirler, ülkeler, diller. Yanlış düzeltirse hemen ← Geri silme ile geri al.</span></div>${sw('acNames', acOn('acNames'))}</div>
-          <div class="set-col"><b>Kendi kelimelerim</b><span>Hep böyle yazılmasını istediğin isimler, virgülle ayır</span>
-            <textarea id="acMine" rows="2" placeholder="Örn: Sinan Erdoğan, Enpara, Kadıköy">${esc(acMine().join(', '))}</textarea></div>
-        </section>
-        <section>
-          <h4>Zamanlanmış gönderim</h4>
-          <div class="set-row"><div><b>Google zamanlayıcısı</b><span>${!store.get('schedScript') ? 'Kurulu değil: zamanlanmış postalar ve ertelenen mailler sadece uygulama açıkken işlenir'
-              : store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? '<b class="upd">Yeni sürüm var.</b> Erteleme ve gizlilik için zamanlayıcı kodunu güncelle.'
-              : 'Kurulu ve güncel: cihazların kapalıyken de çalışır'}</span></div>
-            <button class="btn" data-action="sched-setup">${IC.clock}${!store.get('schedScript') ? 'Kur' : store.get('schedScriptVer', 1) < SCHED_SCRIPT_VER ? 'Güncelle' : 'Kurulum'}</button></div>
-        </section>
-        <section>
-          <h4>Otomatik etiketleme</h4>
-          <div class="set-row"><div><b>Kurallar ve engellenenler</b><span>${autoSummary()}</span></div>
-            <button class="btn" data-action="set-open-auto">${IC.wand}Aç</button></div>
-        </section>
-        <section>
-          <h4>Takvim</h4>
-          <div class="set-row"><div><b>Açılış görünümü</b><span>Takvim açıldığında</span></div>
-            <div class="seg">${[['month', 'Ay'], ['week', 'Hafta'], ['agenda', 'Ajanda']].map(([m, t]) => `<button class="${calMode === m ? 'on' : ''}" data-action="set-calmode" data-m="${m}">${t}</button>`).join('')}</div></div>
-        </section>
-        <section>
-          <h4>Hesap</h4>
-          <div class="set-row"><div><b>${esc(S.email || '')}</b><span>Gmail ve Google Takvim bu hesapla bağlı</span></div>
-            <button class="btn" data-action="logout">${IC.logout}Çıkış yap</button></div>
-        </section>
-        <section>
-          <h4>Uygulama</h4>
-          ${typeof aboutRow === 'function' ? aboutRow() : `<div class="set-row"><div><b>Sürüm ${APP_VERSION}</b></div></div>`}
-          ${typeof feedbackRow === 'function' ? feedbackRow() : ''}
-          <div class="set-row"><div><b>Yenile ve güncelle</b><span>Eski sürüm görünüyorsa önbelleği temizler; giriş ve ayarların kalır</span></div>
-            <button class="btn" data-action="set-hard-reload">${IC.refresh}Yenile</button></div>
-        </section>
+      <div class="set-wrap">
+        <nav class="set-nav" role="tablist">${TABS.map(([k, name, ic]) =>
+          `<button type="button" role="tab" class="set-tab ${k === tab ? 'on' : ''}" aria-selected="${k === tab}" data-action="set-tab" data-tab="${k}">${ic || ''}<span>${name}</span>${k === 'yazma' && upd ? '<i class="set-dot"></i>' : ''}</button>`).join('')}</nav>
+        <div class="set-body" data-tab="${tab}">${cur[3]()}</div>
       </div>
     </div>
   </div>`;
+  if (keep) $('.sheet.settings .set-body').scrollTop = keep;
+  $('.set-tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 // Gmail filtreleri yüklendiyse sayıları göster
@@ -109,6 +100,7 @@ function setTheme(t) {
 
 Object.assign(ACTIONS, {
   settings: () => openSettings(),
+  'set-tab': el => { store.set('setTab', el.dataset.tab); openSettings(); },
   'set-open-auto': () => { closeModal(); ACTIONS.auto(); },
   'set-theme': el => { setTheme(el.dataset.t); openSettings(); },
   'set-toggle': el => {
