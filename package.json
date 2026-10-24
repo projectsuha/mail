@@ -1,0 +1,35 @@
+{
+  "name": "suha-kasa",
+  "productName": "Suha Kasa",
+  "version": "0.10.0",
+  "description": "Suha Kasa — çevrimdışı parola kasası",
+  "author": "Sinan Erdoğan",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.snnerdogan98.kasa",
+    "productName": "Suha Kasa",
+    "copyright": "Sinan Erdoğan",
+    "files": ["main.js", "preload.js", "kasa/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "kasa/simge/kasa.ico" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Suha Kasa",
+      "installerLanguages": ["tr_TR"],
+      "language": "1055",
+      "artifactName": "Suha-Kasa-Kurulum-${version}.exe"
+    }
+  }
+}
