@@ -5,7 +5,7 @@ on:
     branches: [kasa]
     paths: ['kasa/**', 'main.js', 'preload.js', 'package.json', '.github/workflows/windows.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   derle:
     runs-on: windows-latest
@@ -17,8 +17,11 @@ jobs:
         with: { node-version: 22 }
       - run: npm install
       - run: npm run dist
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: Suha-Kasa-Windows
-          path: dist/*.exe
-          if-no-files-found: error
+      - name: Yayinla (Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
+          gh release delete kasa-son --yes --cleanup-tag 2>&1 | Out-Null
+          gh release create kasa-son "$($exe.FullName)" --target "$env:GITHUB_SHA" --title "Suha Kasa (son derleme)" --notes "Otomatik Windows derlemesi. Imzasiz: SmartScreen cikarsa 'Daha fazla bilgi -> Yine de calistir'."
