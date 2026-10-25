@@ -1,0 +1,23 @@
+{
+  "name": "suha-pano",
+  "productName": "Suha Pano",
+  "version": "0.10.0",
+  "description": "Suha Pano — çevrimdışı dijital beyaz tahta (Windows)",
+  "author": "Sinan Erdoğan",
+  "private": true,
+  "main": "main.js",
+  "scripts": { "start": "electron .", "dist": "electron-builder --win nsis --publish never" },
+  "devDependencies": { "electron": "^44.0.0", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "com.snnerdogan98.pano",
+    "productName": "Suha Pano",
+    "copyright": "Sinan Erdoğan",
+    "files": ["main.js", "preload.js", "pano/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "pano/simge/pano.ico" },
+    "nsis": {
+      "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true, "createDesktopShortcut": true, "shortcutName": "Suha Pano",
+      "installerLanguages": ["tr_TR"], "language": "1055", "artifactName": "Suha-Pano-Kurulum-${version}.exe"
+    }
+  }
+}
