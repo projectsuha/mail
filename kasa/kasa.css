@@ -173,3 +173,15 @@ input[type=range]{accent-color:var(--yesil)}
   *{animation:none !important;transition:none !important}
 }
 @media(min-width:720px){ .merkez .kart{max-width:460px} }
+
+/* ── masaüstü: iki panel (solda liste, sağda detay) ── */
+.sarmal.genis{max-width:1080px}
+.duzen{display:flex;gap:18px;align-items:flex-start}
+.solpane{width:340px;flex:none}
+.sagpane{flex:1;position:sticky;top:18px}
+.panelic{background:var(--panel);border:1px solid var(--kenar);border-radius:16px;
+  box-shadow:var(--golge);padding:22px;min-height:440px;animation:kartGir .3s ease both}
+.panelBos{display:grid;place-items:center;text-align:center;color:var(--soluk)}
+.panelBos .bikon{width:64px;height:64px;opacity:.45;margin:0 auto 14px}
+/* geniş modda liste satırı seçili */
+.satir.secili{border-color:var(--yesil-koyu);background:var(--panel2);box-shadow:0 0 0 2px rgba(47,211,107,.15)}

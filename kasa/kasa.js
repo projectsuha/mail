@@ -22,6 +22,11 @@ let veriAnahtari = null;    // bellekte
 let kilitZaman = null;      // otomatik kilit sayacı
 let panoZaman = null;       // pano temizleme sayacı
 let aktifFiltre = 'hepsi';
+let seciliId = null;        // geniş modda sağ panelde açık kayıt
+
+// geniş (masaüstü) mod: iki panel; dar: tek sütun + modal
+const GENIS = () => window.matchMedia('(min-width:900px)').matches;
+window.matchMedia('(min-width:900px)').addEventListener('change', () => { if (kasa && $('#liste')) ekranAna(); });
 
 /* ───────── yardımcılar ───────── */
 const $ = (s, k = document) => k.querySelector(s);
@@ -119,6 +124,7 @@ async function ciz() {
 /* ───────── 1) kurulum ───────── */
 let kurGecici = null; // {depo, kurtarma}
 function ekranKur() {
+  kok.classList.remove("genis");
   kok.innerHTML = `<div class="merkez"><div class="kart">
     ${kadranHTML()}
     <h2>Kasanı kur</h2>
@@ -188,6 +194,7 @@ function ekranKurtarma() {
 
 /* ───────── 3) kilit ekranı ───────── */
 function ekranKilit() {
+  kok.classList.remove("genis");
   kok.innerHTML = `<div class="merkez"><div class="kart">
     ${kadranHTML()}
     <h2>Kasa kilitli</h2>
@@ -256,8 +263,36 @@ function yeniParolaEkrani() {
 }
 
 /* ───────── 4) ana ekran (kasa listesi) ───────── */
+function panelBosHTML() {
+  return `<div class="panelBos"><div><div class="bikon">${IC.bosKasa}</div>
+    Soldan bir kayıt seç<br>ya da “Ekle” ile yeni oluştur.</div></div>`;
+}
+// içeriği geniş modda sağ panele, dar modda modala koyar; hedef konteyneri döner
+function hedefAc(html) {
+  if (GENIS()) { const panel = $('#panel'); if (panel) { panel.innerHTML = html; return panel; } }
+  modalAc(html); return modalKat.querySelector('.modal');
+}
+function hedefKapat() {
+  if (GENIS() && $('#panel')) { seciliId = null; $('#panel').innerHTML = panelBosHTML(); isaretleSecili(); }
+  else modalKapat();
+}
+function isaretleSecili() {
+  document.querySelectorAll('.satir.secili').forEach(s => s.classList.remove('secili'));
+  if (GENIS() && seciliId != null) { const s = document.querySelector(`.satir[data-id="${seciliId}"]`); if (s) s.classList.add('secili'); }
+}
+const aramaVal = () => ($('#ara')?.value || '');
+
 function ekranAna() {
+  const genis = GENIS();
+  kok.classList.toggle('genis', genis);
   const sayi = (t) => kasa.kayitlar.filter(x => t === 'hepsi' || x.tur === t).length;
+  const solIc = `
+    <div class="aracbar">
+      <input id="ara" type="search" placeholder="Ara…">
+      <button class="btn ana" id="ekleBtn">${IC.arti}<span>Ekle</span></button>
+    </div>
+    <div class="cipler" id="cipler"></div>
+    <div class="liste" id="liste"></div>`;
   kok.innerHTML = `
   <div class="ust">
     <img class="logo" src="simge/kasa-192.png" alt="">
@@ -266,23 +301,26 @@ function ekranAna() {
     <button class="ikonbtn" id="ayarBtn" title="Ayarlar">${IC.ayar}</button>
     <button class="ikonbtn" id="kilitBtn" title="Kilitle">${IC.kilit}</button>
   </div>
-  <div class="aracbar">
-    <input id="ara" type="search" placeholder="Ara…">
-    <button class="btn ana" id="ekleBtn">${IC.arti}<span>Ekle</span></button>
-  </div>
-  <div class="cipler" id="cipler"></div>
-  <div class="liste" id="liste"></div>`;
+  ${genis
+      ? `<div class="duzen"><div class="solpane">${solIc}</div>
+           <div class="sagpane"><div class="panelic" id="panel">${panelBosHTML()}</div></div></div>`
+      : solIc}`;
 
   const cipler = [['hepsi', 'Hepsi'], ['giris', 'Giriş'], ['kart', 'Kart'], ['not', 'Not'], ['wifi', 'Wi-Fi'], ['kimlik', 'Kimlik']];
   $('#cipler').innerHTML = cipler.map(([k, ad]) => `<button class="cip ${k === aktifFiltre ? 'aktif' : ''}" data-f="${k}">${ad} ${sayi(k) ? `<b style="opacity:.6">${sayi(k)}</b>` : ''}</button>`).join('');
   $('#cipler').onclick = e => { const b = e.target.closest('.cip'); if (b) { aktifFiltre = b.dataset.f; ekranAna(); } };
 
-  $('#ara').oninput = () => listeCiz($('#ara').value);
+  $('#ara').oninput = () => listeCiz(aramaVal());
   $('#ekleBtn').onclick = () => detayModal(null);
   $('#uretBtn').onclick = uretModal;
   $('#ayarBtn').onclick = ekranAyarlar;
   $('#kilitBtn').onclick = kilitle;
   listeCiz('');
+
+  if (genis && seciliId != null) {
+    const x = kasa.kayitlar.find(k => k.id == seciliId);
+    if (x) goruntuModal(x); else seciliId = null;
+  }
 }
 
 function listeCiz(q) {
@@ -310,6 +348,7 @@ function listeCiz(q) {
     if (kop) { e.stopPropagation(); const r = kasa.kayitlar.find(k => k.id == kop.dataset.kop); kopyala(r.parola); return; }
     const s = e.target.closest('.satir'); if (s) goruntuModal(kasa.kayitlar.find(k => k.id == s.dataset.id));
   };
+  isaretleSecili();
 }
 function altMetin(x) {
   if (x.tur === 'giris' && x.yontem && x.yontem !== 'parola')
@@ -328,6 +367,7 @@ function vrHTML(ad, v, gizli) {
 }
 function goruntuModal(kayit) {
   const x = kayit;
+  seciliId = x.id;
   const sosyal = x.tur === 'giris' && x.yontem && x.yontem !== 'parola';
   const alanlar = (ALANLAR[x.tur] || []).filter(([k]) => k !== 'yontem');
   const rows = alanlar.map(([k, ad, tip]) => {
@@ -337,7 +377,7 @@ function goruntuModal(kayit) {
     const et = (k === 'parola' && sosyal) ? 'Parola' : ad.split(' / ')[0].replace(/ \(.*/, '');
     return vrHTML(et, x[k], tip === 'gizli');
   }).filter(Boolean);
-  modalAc(`
+  const govde = `
     <div class="baslikKutu">
       ${avatarHTML(x)}
       <div class="bilgi"><div class="ad">${esc(x.baslik || TURAD[x.tur])}</div>
@@ -354,19 +394,21 @@ function goruntuModal(kayit) {
     <div style="display:flex;gap:10px;margin-top:18px">
       <button class="btn ana" id="duzenle" style="flex:1">${IC.duzenle}<span>Düzenle</span></button>
       <button class="btn" id="kapat">Kapat</button>
-    </div>`);
+    </div>`;
+  const c = hedefAc(govde);
+  isaretleSecili();
   // satır içi göster/gizle
-  modalKat.querySelectorAll('[data-goz]').forEach(b => b.onclick = () => {
+  c.querySelectorAll('[data-goz]').forEach(b => b.onclick = () => {
     const d = b.closest('.vr').querySelector('.vdeger'); const acik = d.dataset.acik === '1';
     d.dataset.acik = acik ? '0' : '1';
     d.textContent = acik ? '••••••••••' : d.dataset.ham;
     b.innerHTML = acik ? IC.goz : IC.gozKapali;
   });
-  modalKat.querySelectorAll('[data-kopdeg]').forEach(b => b.onclick = () => kopyala(b.dataset.kopdeg));
+  c.querySelectorAll('[data-kopdeg]').forEach(b => b.onclick = () => kopyala(b.dataset.kopdeg));
   if (x.tur === 'giris' && x.totp) totpGoster(x.totp);
-  $('#yild').onclick = async () => { x.yildiz = x.yildiz ? 0 : 1; await sakla(); $('#yild').classList.toggle('on', !!x.yildiz); };
-  $('#duzenle').onclick = () => { modalKapat(); detayModal(x); };
-  $('#kapat').onclick = () => { modalKapat(); ekranAna(); };
+  $('#yild', c).onclick = async () => { x.yildiz = x.yildiz ? 0 : 1; await sakla(); $('#yild', c).classList.toggle('on', !!x.yildiz); listeCiz(aramaVal()); };
+  $('#duzenle', c).onclick = () => detayModal(x);
+  $('#kapat', c).onclick = () => { hedefKapat(); if (!GENIS()) ekranAna(); };
 }
 
 /* ───────── kayıt düzenle / yeni ───────── */
@@ -384,7 +426,7 @@ function detayModal(kayit) {
   let d = kayit ? { ...kayit } : { id: Date.now(), tur: 'giris', baslik: '', yildiz: 0 };
   function ciz() {
     const alanlar = ALANLAR[d.tur] || [];
-    modalAc(`
+    const c = hedefAc(`
       <h3>${yeni ? 'Yeni kayıt' : esc(d.baslik || TURAD[d.tur])}</h3>
       <label class="alan">Tür</label>
       <select id="tur">${Object.entries(TURAD).map(([k, v]) => `<option value="${k}" ${k === d.tur ? 'selected' : ''}>${v}</option>`).join('')}</select>
@@ -415,17 +457,17 @@ function detayModal(kayit) {
         ${yeni ? '' : '<button class="btn tehlike" id="sil">Sil</button>'}
         <button class="btn" id="kapat">Kapat</button>
       </div>`);
-    $('#tur').onchange = () => { oku(); d.tur = $('#tur').value; ciz(); };
-    const yont = $('#yontem'); if (yont) yont.onchange = () => { oku(); ciz(); };
-    const goz = $('#goz'); if (goz) goz.onclick = () => { const i = $('[data-k="parola"]'); const g = i.type === 'password'; i.type = g ? 'text' : 'password'; goz.innerHTML = g ? IC.gozKapali : IC.goz; };
-    const uret = $('#uret'); if (uret) uret.onclick = () => { $('[data-k="parola"]').value = uretRastgele(16); };
+    $('#tur', c).onchange = () => { oku(); d.tur = $('#tur', c).value; ciz(); };
+    const yont = $('#yontem', c); if (yont) yont.onchange = () => { oku(); ciz(); };
+    const goz = $('#goz', c); if (goz) goz.onclick = () => { const i = $('[data-k="parola"]', c); const g = i.type === 'password'; i.type = g ? 'text' : 'password'; goz.innerHTML = g ? IC.gozKapali : IC.goz; };
+    const uret = $('#uret', c); if (uret) uret.onclick = () => { $('[data-k="parola"]', c).value = uretRastgele(16); };
     if (d.tur === 'giris' && d.totp) totpGoster(d.totp);
-    modalKat.querySelectorAll('[data-eski]').forEach(b => b.onclick = () => kopyala(b.dataset.eski));
-    $('#kaydet').onclick = async () => {
+    c.querySelectorAll('[data-eski]').forEach(b => b.onclick = () => kopyala(b.dataset.eski));
+    $('#kaydet', c).onclick = async () => {
       const eskiParola = kayit ? kayit.parola : '';
       oku();
       if (!d.baslik) d.baslik = TURAD[d.tur];
-      d.yildiz = $('#yildiz').checked ? 1 : 0;
+      d.yildiz = $('#yildiz', c).checked ? 1 : 0;
       // parola değiştiyse eskisini geçmişe al (en çok 10)
       if (eskiParola && d.parola && eskiParola !== d.parola) {
         d.eskiler = [...(d.eskiler || []), { parola: eskiParola, tarih: kayit.guncel || Date.now() }].slice(-10);
@@ -433,17 +475,19 @@ function detayModal(kayit) {
       d.guncel = Date.now();
       const i = kasa.kayitlar.findIndex(x => x.id === d.id);
       if (i >= 0) kasa.kayitlar[i] = d; else kasa.kayitlar.push(d);
-      await sakla(); modalKapat(); ekranAna();
+      await sakla(); seciliId = d.id;
+      if (GENIS() && $('#panel')) { listeCiz(aramaVal()); goruntuModal(d); } else { modalKapat(); ekranAna(); }
     };
-    const sil = $('#sil'); if (sil) sil.onclick = async () => {
+    const sil = $('#sil', c); if (sil) sil.onclick = async () => {
       if (!confirm('Bu kaydı silmek istediğine emin misin?')) return;
-      kasa.kayitlar = kasa.kayitlar.filter(x => x.id !== d.id);
-      await sakla(); modalKapat(); ekranAna();
+      kasa.kayitlar = kasa.kayitlar.filter(x => x.id !== d.id); seciliId = null;
+      await sakla();
+      if (GENIS() && $('#panel')) { listeCiz(aramaVal()); hedefKapat(); } else { modalKapat(); ekranAna(); }
     };
-    $('#kapat').onclick = modalKapat;
+    $('#kapat', c).onclick = () => { if (GENIS() && $('#panel')) { if (yeni) hedefKapat(); else goruntuModal(d); } else modalKapat(); };
     function oku() {
-      d.baslik = $('#baslik').value.trim();
-      modalKat.querySelectorAll('[data-k]').forEach(i => d[i.dataset.k] = i.value);
+      d.baslik = $('#baslik', c).value.trim();
+      c.querySelectorAll('[data-k]').forEach(i => d[i.dataset.k] = i.value);
     }
   }
   ciz();
@@ -510,6 +554,7 @@ function uretModal() {
 
 /* ───────── ayarlar ───────── */
 function ekranAyarlar() {
+  kok.classList.remove("genis");
   const a = kasa.ayarlar;
   const panoSec = [0, 15, 30, 60];
   const kilitSec = [1, 5, 15];
@@ -570,6 +615,7 @@ function saglikRozet() {
   return n ? ` <b style="color:var(--sari)">${n}</b>` : ' <b style="color:var(--yesil)">✓</b>';
 }
 function parolaSagligiEkrani() {
+  kok.classList.remove("genis");
   const a = saglikAnaliz();
   const blok = (baslik, dizi, renk) => !dizi.length ? '' : `
     <label class="alan" style="color:${renk}">${baslik} (${dizi.length})</label>
