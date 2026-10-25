@@ -29,18 +29,53 @@ const kok = $('#kok');
 const modalKat = $('#modal-kat');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+const sv = (p, w = 20) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const IC = {
-  giris: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M12 15v3"/></svg>',
-  kart: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>',
-  not: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>',
-  wifi: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>',
-  kimlik: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M13 10h5M13 13h4M5 16a3 3 0 0 1 7 0"/></svg>',
-  kopya: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
-  ayar: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
-  kilit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
-  arti: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  giris: sv('<circle cx="12" cy="10" r="3"/><path d="M12 13v3"/><path d="M8 20h8"/>'),
+  kart: sv('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>'),
+  not: sv('<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 15h4"/>'),
+  wifi: sv('<path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>'),
+  kimlik: sv('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M13 10h5M13 13h4M5.2 16a3 3 0 0 1 6.6 0"/>'),
+  kopya: sv('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>', 18),
+  ayar: sv('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>', 22),
+  kilit: sv('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 22),
+  arti: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  goz: sv('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>', 18),
+  gozKapali: sv('<path d="M4 4l16 16"/><path d="M9.9 5.2A10 10 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 3.9M6.2 6.2A18 18 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 3-.45"/><path d="M9.8 9.8a3 3 0 0 0 4.2 4.3"/>', 18),
+  uret: sv('<path d="M15 4V2M15 4l-1.5 1.5M15 4l1.5 1.5"/><path d="M4 20l9.5-9.5M14 6l4 4L8.5 19.5 4 20l.5-4.5z"/><path d="M19 11l1 1"/>', 20),
+  yenile: sv('<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>', 18),
+  geri: sv('<path d="M15 5l-7 7 7 7"/>', 22),
+  duzenle: sv('<path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/>', 18),
+  yazdir: sv('<path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/>', 18),
+  yildiz: sv('<path d="m12 3.3 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.6l-5.2 2.8 1-5.8L3.6 9.4l5.8-.8z"/>', 18),
+  bosKasa: sv('<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="11" cy="12" r="3.3"/><path d="M11 8.6v-1M11 16.4v1M7.6 12h-1M15.4 12h1"/><path d="M16.5 10v4"/>', 56),
 };
 const TURAD = { giris: 'Giriş', kart: 'Kart', not: 'Gizli not', wifi: 'Wi-Fi', kimlik: 'Kimlik' };
+const TURRENK = { giris: '#4b9bff', kart: '#f3c54a', not: '#9aa3af', wifi: '#2fd36b', kimlik: '#b794f6' };
+
+// harf avatarı: tür rengiyle, köşede tür ikonu
+function avatarHTML(x) {
+  const renk = TURRENK[x.tur] || '#9aa3af';
+  const harf = esc((x.baslik || '?').trim().charAt(0).toUpperCase() || '?');
+  return `<span class="avatar" style="background:${renk}22;color:${renk}">${harf}
+    <span class="turik" style="color:${renk}">${IC[x.tur] || IC.not}</span></span>`;
+}
+
+// çelik kasa kadranı (SVG) — kurulum/kilit ekranı
+function kadranHTML(sinif = '') {
+  return `<div class="kadranSar"><svg class="kadran ${sinif}" width="128" height="128" viewBox="0 0 128 128">
+    <defs><radialGradient id="celikG" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#565d67"/><stop offset="60%" stop-color="#3a4049"/><stop offset="100%" stop-color="#23272d"/>
+    </radialGradient></defs>
+    <circle class="halkaDis" cx="64" cy="64" r="60"/>
+    <circle class="yuz" cx="64" cy="64" r="48"/>
+    ${Array.from({ length: 24 }, (_, i) => { const a = i * 15 * Math.PI / 180, r1 = 44, r2 = i % 2 ? 40 : 37; return `<line class="tik" x1="${64 + r1 * Math.sin(a)}" y1="${64 - r1 * Math.cos(a)}" x2="${64 + r2 * Math.sin(a)}" y2="${64 - r2 * Math.cos(a)}"/>`; }).join('')}
+    <circle class="knob" cx="64" cy="64" r="15"/>
+    <circle class="knobIc" cx="64" cy="64" r="6"/>
+    <rect class="kol" x="60" y="20" width="8" height="20" rx="3"/>
+    <circle class="isik" cx="98" cy="64" r="5"/>
+  </svg></div>`;
+}
 
 function toast(m) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = m;
@@ -85,7 +120,7 @@ async function ciz() {
 let kurGecici = null; // {depo, kurtarma}
 function ekranKur() {
   kok.innerHTML = `<div class="merkez"><div class="kart">
-    <img class="kasasimge" src="simge/kasa-512.png" alt="">
+    ${kadranHTML()}
     <h2>Kasanı kur</h2>
     <p class="alt">Tüm parolaların bu cihazda, şifreli saklanır. Suha'ya ya da internete hiçbir şey gitmez.</p>
     <label class="alan" for="p1">Ana parola</label>
@@ -154,7 +189,7 @@ function ekranKurtarma() {
 /* ───────── 3) kilit ekranı ───────── */
 function ekranKilit() {
   kok.innerHTML = `<div class="merkez"><div class="kart">
-    <img class="kasasimge" src="simge/kasa-512.png" alt="">
+    ${kadranHTML()}
     <h2>Kasa kilitli</h2>
     <p class="alt">Ana parolanı yaz.</p>
     <input id="kp" type="password" autocomplete="current-password" placeholder="Ana parola">
@@ -169,7 +204,9 @@ function ekranKilit() {
     b.disabled = true; b.textContent = 'Açılıyor…';
     try {
       const r = await K.acParola(depo, kp.value);
-      kasa = r.kasa; veriAnahtari = r.veriAnahtari; kilitKur(); ekranAna();
+      kasa = r.kasa; veriAnahtari = r.veriAnahtari; kilitKur();
+      const kd = $('.kadran'); if (kd) { kd.classList.add('acildi'); await new Promise(f => setTimeout(f, 450)); }
+      ekranAna(); return;
     } catch {
       b.disabled = false; b.textContent = 'Aç';
       bekle = Math.min((bekle || 0) + 1, 10);
@@ -225,7 +262,7 @@ function ekranAna() {
   <div class="ust">
     <img class="logo" src="simge/kasa-192.png" alt="">
     <h1>Kasa</h1><div class="bosluk"></div>
-    <button class="ikonbtn" id="uretBtn" title="Parola üret">🎲</button>
+    <button class="ikonbtn" id="uretBtn" title="Parola üret">${IC.uret}</button>
     <button class="ikonbtn" id="ayarBtn" title="Ayarlar">${IC.ayar}</button>
     <button class="ikonbtn" id="kilitBtn" title="Kilitle">${IC.kilit}</button>
   </div>
@@ -255,27 +292,84 @@ function listeCiz(q) {
     .filter(x => !q || (x.baslik + ' ' + (x.kadi || '') + ' ' + (x.site || '')).toLowerCase().includes(q))
     .sort((a, b) => (b.yildiz - a.yildiz) || a.baslik.localeCompare(b.baslik, 'tr'));
   const el = $('#liste');
-  if (!l.length) { el.innerHTML = `<div class="bos-durum">${kasa.kayitlar.length ? 'Eşleşen kayıt yok.' : 'Kasan boş. Sağ üstten “Ekle” ile başla.'}</div>`; return; }
-  const altMetin = (x) => {
-    if (x.tur === 'giris' && x.yontem && x.yontem !== 'parola')
-      return YONTEMLER[x.yontem] + (x.bagli ? ' · ' + x.bagli : (x.kadi ? ' · ' + x.kadi : ''));
-    return x.kadi || x.site || TURAD[x.tur] || '';
-  };
+  if (!l.length) {
+    el.innerHTML = kasa.kayitlar.length
+      ? `<div class="bos-durum">Eşleşen kayıt yok.</div>`
+      : `<div class="bos-durum"><div class="bikon">${IC.bosKasa}</div>Kasan boş.<br>Sağ üstten “Ekle” ile ilk kaydını oluştur.</div>`;
+    return;
+  }
   el.innerHTML = l.map(x => `<div class="satir" data-id="${x.id}">
-    <span class="rozet">${IC[x.tur] || IC.not}</span>
-    <div><div class="ad">${esc(x.baslik)} ${x.yildiz ? '<span class="yildiz">★</span>' : ''}</div>
+    ${avatarHTML(x)}
+    <div><div class="ad">${esc(x.baslik)} ${x.yildiz ? `<span class="yildiz">${IC.yildiz}</span>` : ''}</div>
       <div class="alt">${esc(altMetin(x))}</div></div>
     <div class="bosluk"></div>
-    ${x.parola ? `<button class="ikonbtn kopyala" data-kop="${x.id}" title="Parolayı kopyala">${IC.kopya}</button>` : ''}
+    ${x.parola ? `<button class="ikonbtn kopyala sm" data-kop="${x.id}" title="Parolayı kopyala">${IC.kopya}</button>` : ''}
   </div>`).join('');
   el.onclick = e => {
     const kop = e.target.closest('[data-kop]');
     if (kop) { e.stopPropagation(); const r = kasa.kayitlar.find(k => k.id == kop.dataset.kop); kopyala(r.parola); return; }
-    const s = e.target.closest('.satir'); if (s) detayModal(kasa.kayitlar.find(k => k.id == s.dataset.id));
+    const s = e.target.closest('.satir'); if (s) goruntuModal(kasa.kayitlar.find(k => k.id == s.dataset.id));
   };
 }
+function altMetin(x) {
+  if (x.tur === 'giris' && x.yontem && x.yontem !== 'parola')
+    return YONTEMLER[x.yontem] + (x.bagli ? ' · ' + x.bagli : (x.kadi ? ' · ' + x.kadi : ''));
+  return x.kadi || x.site || TURAD[x.tur] || '';
+}
 
-/* ───────── kayıt detay / düzenle ───────── */
+/* ───────── kayıt görüntüle (önce oku, sonra düzenle) ───────── */
+function vrHTML(ad, v, gizli) {
+  return `<div class="vr"><span class="vlabel">${ad}</span>
+    <span class="vdeger ${gizli ? 'mono' : ''}" data-ham="${esc(v)}" data-acik="0">${gizli ? '••••••••••' : esc(v)}</span>
+    <span class="vact">
+      ${gizli ? `<button class="ikonbtn sm" data-goz title="Göster/gizle">${IC.goz}</button>` : ''}
+      <button class="ikonbtn sm kopyala" data-kopdeg="${esc(v)}" title="Kopyala">${IC.kopya}</button>
+    </span></div>`;
+}
+function goruntuModal(kayit) {
+  const x = kayit;
+  const sosyal = x.tur === 'giris' && x.yontem && x.yontem !== 'parola';
+  const alanlar = (ALANLAR[x.tur] || []).filter(([k]) => k !== 'yontem');
+  const rows = alanlar.map(([k, ad, tip]) => {
+    if (k === 'totp') return '';                 // canlı kod kutusu aşağıda
+    if (k === 'bagli' && !sosyal) return '';
+    if (!x[k]) return '';
+    const et = (k === 'parola' && sosyal) ? 'Parola' : ad.split(' / ')[0].replace(/ \(.*/, '');
+    return vrHTML(et, x[k], tip === 'gizli');
+  }).filter(Boolean);
+  modalAc(`
+    <div class="baslikKutu">
+      ${avatarHTML(x)}
+      <div class="bilgi"><div class="ad">${esc(x.baslik || TURAD[x.tur])}</div>
+        <div class="turpill">${TURAD[x.tur]}${sosyal ? ' · ' + YONTEMLER[x.yontem] : ''}</div></div>
+      <button class="ikonbtn yildizBtn ${x.yildiz ? 'on' : ''}" id="yild" title="Yıldızla">${IC.yildiz}</button>
+    </div>
+    ${rows.join('') || '<p class="alt" style="text-align:left;margin:6px 0">Bu kayıtta görüntülenecek alan yok.</p>'}
+    ${x.tur === 'giris' && x.totp ? `<div class="totp" id="totpKutu"></div>` : ''}
+    ${(x.eskiler && x.eskiler.length) ? `<label class="alan">Eski parolalar (${x.eskiler.length})</label>
+      <div class="liste">${x.eskiler.slice().reverse().map(e => `<div class="satir" style="cursor:default">
+        <span class="vdeger mono" style="flex:1">${esc(e.parola)}</span>
+        <span class="alt">${e.tarih ? new Date(e.tarih).toLocaleDateString('tr') : ''}</span>
+        <button class="ikonbtn sm kopyala" data-kopdeg="${esc(e.parola)}">${IC.kopya}</button></div>`).join('')}</div>` : ''}
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button class="btn ana" id="duzenle" style="flex:1">${IC.duzenle}<span>Düzenle</span></button>
+      <button class="btn" id="kapat">Kapat</button>
+    </div>`);
+  // satır içi göster/gizle
+  modalKat.querySelectorAll('[data-goz]').forEach(b => b.onclick = () => {
+    const d = b.closest('.vr').querySelector('.vdeger'); const acik = d.dataset.acik === '1';
+    d.dataset.acik = acik ? '0' : '1';
+    d.textContent = acik ? '••••••••••' : d.dataset.ham;
+    b.innerHTML = acik ? IC.goz : IC.gozKapali;
+  });
+  modalKat.querySelectorAll('[data-kopdeg]').forEach(b => b.onclick = () => kopyala(b.dataset.kopdeg));
+  if (x.tur === 'giris' && x.totp) totpGoster(x.totp);
+  $('#yild').onclick = async () => { x.yildiz = x.yildiz ? 0 : 1; await sakla(); $('#yild').classList.toggle('on', !!x.yildiz); };
+  $('#duzenle').onclick = () => { modalKapat(); detayModal(x); };
+  $('#kapat').onclick = () => { modalKapat(); ekranAna(); };
+}
+
+/* ───────── kayıt düzenle / yeni ───────── */
 const YONTEMLER = { parola: 'Parola', google: 'Google ile', apple: 'Apple ile', microsoft: 'Microsoft ile', facebook: 'Facebook ile', eposta: 'E-posta bağlantısı/kod', telefon: 'Telefon/SMS' };
 const ALANLAR = {
   giris: [['yontem', 'Giriş yöntemi', 'secim'], ['kadi', 'Kullanıcı adı / e-posta'], ['parola', 'Parola', 'gizli'], ['bagli', 'Bağlı hesap (hangi Google/Apple…)'], ['site', 'Site'], ['totp', 'TOTP (anahtar ya da otpauth)']],
@@ -307,7 +401,7 @@ function detayModal(kayit) {
         const etiket = (k === 'parola' && sosyal) ? 'Parola (varsa)' : ad;
         return `<label class="alan">${etiket}</label>
           <div class="satir-ic"><input data-k="${k}" type="${t}" value="${v}" autocomplete="off">
-          ${k === 'parola' ? `<button class="ikonbtn" id="goz" title="Göster">👁</button><button class="ikonbtn" id="uret" title="Üret">🎲</button>` : ''}</div>`;
+          ${k === 'parola' ? `<button class="ikonbtn sm" id="goz" title="Göster">${IC.goz}</button><button class="ikonbtn sm" id="uret" title="Üret">${IC.uret}</button>` : ''}</div>`;
       }).join('')}
       ${d.tur === 'giris' && d.totp ? `<div class="totp" id="totpKutu" style="margin-top:12px"></div>` : ''}
       ${(d.eskiler && d.eskiler.length) ? `<label class="alan">Eski parolalar (${d.eskiler.length})</label>
@@ -323,7 +417,7 @@ function detayModal(kayit) {
       </div>`);
     $('#tur').onchange = () => { oku(); d.tur = $('#tur').value; ciz(); };
     const yont = $('#yontem'); if (yont) yont.onchange = () => { oku(); ciz(); };
-    const goz = $('#goz'); if (goz) goz.onclick = () => { const i = $('[data-k="parola"]'); i.type = i.type === 'password' ? 'text' : 'password'; };
+    const goz = $('#goz'); if (goz) goz.onclick = () => { const i = $('[data-k="parola"]'); const g = i.type === 'password'; i.type = g ? 'text' : 'password'; goz.innerHTML = g ? IC.gozKapali : IC.goz; };
     const uret = $('#uret'); if (uret) uret.onclick = () => { $('[data-k="parola"]').value = uretRastgele(16); };
     if (d.tur === 'giris' && d.totp) totpGoster(d.totp);
     modalKat.querySelectorAll('[data-eski]').forEach(b => b.onclick = () => kopyala(b.dataset.eski));
@@ -364,9 +458,10 @@ function totpGoster(anahtar) {
       const kod = await K.totp(anahtar.replace(/^otpauth:.*secret=/i, '').split('&')[0]);
       const kalan = 30 - Math.floor(Date.now() / 1000) % 30;
       kutu.innerHTML = `<span class="halka" style="--a:${(30 - kalan) / 30 * 100}%"></span>
-        <span class="kod">${kod.replace(/(\d{3})(\d{3})/, '$1 $2')}</span>
-        <span style="color:var(--soluk);font-size:13px">${kalan}s</span>
-        <button class="ikonbtn kopyala" id="totpKop">${IC.kopya}</button>`;
+        <div style="flex:1"><div class="etk">Tek kullanımlık kod</div>
+          <span class="kod">${kod.replace(/(\d{3})(\d{3})/, '$1 $2')}</span></div>
+        <span class="etk">${kalan}s</span>
+        <button class="ikonbtn sm kopyala" id="totpKop" title="Kodu kopyala">${IC.kopya}</button>`;
       $('#totpKop').onclick = () => kopyala(kod);
     } catch { kutu.innerHTML = '<span style="color:var(--soluk);font-size:13px">TOTP anahtarı geçersiz</span>'; }
   }
@@ -419,7 +514,7 @@ function ekranAyarlar() {
   const panoSec = [0, 15, 30, 60];
   const kilitSec = [1, 5, 15];
   kok.innerHTML = `
-  <div class="ust"><button class="ikonbtn" id="geri">‹</button><h1>Ayarlar</h1></div>
+  <div class="ust"><button class="ikonbtn" id="geri" title="Geri">${IC.geri}</button><h1>Ayarlar</h1></div>
   <div class="kart" style="max-width:none">
     <label class="alan">Pano temizleme (kopyalanan parola)</label>
     <select id="pano">${panoSec.map(s => `<option value="${s}" ${((a.pano ?? 30) === s) ? 'selected' : ''}>${s === 0 ? 'Kapalı' : s + ' sn'}</option>`).join('')}</select>
@@ -479,11 +574,11 @@ function parolaSagligiEkrani() {
   const blok = (baslik, dizi, renk) => !dizi.length ? '' : `
     <label class="alan" style="color:${renk}">${baslik} (${dizi.length})</label>
     <div class="liste">${dizi.map(x => `<div class="satir" data-id="${x.id}">
-      <span class="rozet">${IC[x.tur] || IC.not}</span>
+      ${avatarHTML(x)}
       <div><div class="ad">${esc(x.baslik)}</div><div class="alt">${esc(x.kadi || x.site || '')}</div></div>
     </div>`).join('')}</div>`;
   kok.innerHTML = `
-  <div class="ust"><button class="ikonbtn" id="geri">‹</button><h1>Parola sağlığı</h1></div>
+  <div class="ust"><button class="ikonbtn" id="geri" title="Geri">${IC.geri}</button><h1>Parola sağlığı</h1></div>
   <div class="kart" style="max-width:none">
     ${a.toplam ? '' : '<div class="bos-durum">Her şey yolunda. Zayıf, tekrar eden ya da eski parola yok.</div>'}
     ${blok('Zayıf — kolay tahmin edilebilir', a.zayif, 'var(--kirmizi)')}
@@ -491,7 +586,7 @@ function parolaSagligiEkrani() {
     ${blok('Eski — 1 yıldan uzun süredir değişmedi', a.eski, 'var(--soluk)')}
   </div>`;
   $('#geri').onclick = ekranAyarlar;
-  kok.querySelectorAll('.satir').forEach(s => s.onclick = () => detayModal(kasa.kayitlar.find(k => k.id == s.dataset.id)));
+  kok.querySelectorAll('.satir').forEach(s => s.onclick = () => goruntuModal(kasa.kayitlar.find(k => k.id == s.dataset.id)));
 }
 
 /* ───────── CSV ───────── */
