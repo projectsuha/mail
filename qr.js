@@ -6,7 +6,7 @@
 'use strict';
 
 window.APP_NAME = 'QR';
-window.APP_ICON = 'qr-apple.png?v=1';
+window.APP_ICON = 'qr-apple.png?v=8';
 window.APP_LEAD = 'QR kod ve barkod okuyucu. Bağlantıları açmadan önce kontrol eder; QR kod da oluşturur.';
 
 const QSVG = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
@@ -154,6 +154,7 @@ function okutCiz() {
       <input type="range" class="qr-zum" id="qZum" hidden min="1" max="1" step="0.1" value="1" aria-label="Yakınlaştır">
     </div>
     <div class="qr-toplu" id="qToplu" ${Q.toplu ? '' : 'hidden'}></div>
+    <div class="qr-ikili"><button class="a" data-action="q-sekme" data-k="olustur"><b>Oluştur</b><small>Bağlantı, Wi-Fi, kartvizit…</small></button><button class="b" data-action="q-sekme" data-k="gecmis"><b>Geçmiş</b><small>Son okuttukların</small></button></div>
   </div>`;
   if (Q.toplu) topluCiz();
   kameraAc();

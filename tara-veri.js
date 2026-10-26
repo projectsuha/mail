@@ -195,7 +195,7 @@ async function pdfSayfalari(dosya, ilerle) {
     out.push(await tuvaldenBlob(c, 'image/jpeg', 0.9));
     p.cleanup();
   }
-  pdf.destroy();
+  try { (pdf.loadingTask || pdf).destroy?.(); } catch {}
   return out;
 }
 

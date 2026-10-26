@@ -8,7 +8,7 @@
 'use strict';
 
 window.APP_NAME = 'Notlar';
-window.APP_ICON = 'notlar-apple.png?v=1';
+window.APP_ICON = 'notlar-apple.png?v=8';
 window.APP_LEAD = 'Gmail hesabında saklanan, iPhone ve Mac\'teki Notlar uygulamasıyla aynı notlar. Notların yalnızca senin cihazında görüntülenir; arada başka bir sunucu yoktur.';
 window.AUTH_STATE_PREFIX = 'not-';           // Google dönüşü ana sayfaya gelir, ana sayfa buraya aktarır
 Auth.redirectUri = () => location.origin + location.pathname.replace(/[^/]*$/, '');
@@ -44,6 +44,7 @@ showLogin = function (msg) {
     <p>Gmail hesabınla giriş yap. iPhone ve Mac'teki Notlar uygulamasının Gmail'e kaydettiği notlar burada da görünür.</p>
     ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
     <button class="btn primary" data-action="login">Google ile giriş yap</button>
+    ${guvenCipleri([[IC.shield, 'Şifren bize gelmez', 'Giriş Google\'ın kendi sayfasında yapılır (accounts.google.com).'], [IC.notepad, 'Notlar senin Gmail\'inde', 'Sunucumuz yok; notlar Gmail hesabında durur, başka yere gitmez.'], [IC.logout, 'İstediğin an çık', 'Çıkış yapınca bu cihazdaki kopya silinir.']])}
   </div>`;
 };
 
@@ -54,7 +55,7 @@ const nColor = k => (NCOLORS.find(c => c[0] === k) || NCOLORS[0])[2];
 
 /* ───────── Veri katmanı: Gmail (gerçek) ya da örnek veriler (demo) ───────── */
 const CAL_EVENTS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-const NOTE_HDRS = ['Subject', 'X-Universally-Unique-Identifier', 'X-Suha-Color', 'X-Suha-Tags', 'X-Mail-Created-Date', 'X-Suha-Reminder'];
+const NOTE_HDRS = ['Subject', 'X-Universally-Unique-Identifier', 'X-Suha-Color', 'X-Suha-Tags', 'X-Mail-Created-Date', 'X-Suha-Reminder', 'X-Suha-Lock', 'X-Suha-Links'];
 // Hatırlatıcı: "<zaman ms>|<takvim etkinliği kimliği>"
 const remParse = h => { const [t, ev] = String(h || '').trim().split('|'); return +t > 0 ? { at: +t, ev: ev || '' } : null; };
 // #etiketler: notun metninden çıkarılır; listede gösterebilmek için mesaj başlığında da (X-Suha-Tags) saklanır
@@ -65,10 +66,11 @@ const isNotesRoot = l => l.type === 'user' && /^(notes|notlar)$/i.test(l.name);
 function noteMeta(m) {
   return {
     id: m.id, uuid: hdr(m, 'X-Universally-Unique-Identifier') || m.id, title: hdr(m, 'Subject'),
-    snippet: fixMojibake(decodeEntities(m.snippet || '')), date: +m.internalDate || 0, labelIds: m.labelIds || [],
+    locked: hdr(m, 'X-Suha-Lock').trim() === '1', links: (hdr(m, 'X-Suha-Links') || '').split(/\s+/).filter(Boolean),
+    snippet: hdr(m, 'X-Suha-Lock').trim() === '1' ? '' : fixMojibake(decodeEntities(m.snippet || '')), date: +m.internalDate || 0, labelIds: m.labelIds || [],
     pinned: (m.labelIds || []).includes('STARRED'), color: (hdr(m, 'X-Suha-Color') || '').trim().toLowerCase(),
     created: Date.parse(hdr(m, 'X-Mail-Created-Date')) || +m.internalDate || 0, reminder: remParse(hdr(m, 'X-Suha-Reminder')),
-    tags: [...new Set([...tagsHdr(hdr(m, 'X-Suha-Tags')), ...tagsIn(hdr(m, 'Subject') + ' ' + (m.snippet || ''))])]
+    tags: hdr(m, 'X-Suha-Lock').trim() === '1' ? [] : [...new Set([...tagsHdr(hdr(m, 'X-Suha-Tags')), ...tagsIn(hdr(m, 'Subject') + ' ' + (m.snippet || ''))])]
   };
 }
 const NDB_REAL = {
@@ -92,7 +94,8 @@ const NDB_REAL = {
   async get(id) {
     const m = await call('messages/' + id, { query: { format: 'full' } });
     const p = parseMessage(m);
-    return { ...noteMeta(m), html: sanitizeNoteHtml(p.html || textToHtml(p.text || '')), created: p.noteCreated };
+    const enc = ((p.html || p.text || '').match(/suha-enc:(v1\.[\w-]+\.[\w-]+\.[\w-]+)/) || [])[1] || '';
+    return { ...noteMeta(m), html: enc ? '' : sanitizeNoteHtml(p.html || textToHtml(p.text || '')), enc, created: p.noteCreated };
   },
   insert: (raw, labelIds) => call('messages', { method: 'POST', query: { internalDateSource: 'dateHeader' }, body: { raw, labelIds } }),
   trash: id => call(`messages/${id}/trash`, { method: 'POST' }),
@@ -127,21 +130,22 @@ const NDB_DEMO = (() => {
   add('F1', 'Not: kira artışı', '<div>Kira artışı Ocak\'ta %TÜFE oranında olacak, sözleşmeyi kontrol et.</div>', 13 * D, { color: 'pembe' });
   add('F2', 'Ev işleri', '<div>☑ Kombi bakımı</div><div>☐ Perde ölçüsü</div><div>☐ Ampul değiştir</div>', 3 * D, { color: 'yesil' });
   add('F0', 'Eski şifre ipucu (silindi)', '<div>Bu not silinmiş; Silinenler\'den geri getirilebilir.</div>', 4 * D, { trash: true });
-  const meta = m => ({ id: m.id, uuid: m.uuid, title: m.title, snippet: htmlToText(m.html).replace(/\s+/g, ' ').slice(0, 140), date: m.date, created: m.createdAt || m.date, reminder: m.reminder || null, labelIds: [...m.labelIds], pinned: m.labelIds.includes('STARRED'), color: m.color, tags: tagsIn(m.title + ' ' + htmlToText(m.html)) });
+  const meta = m => ({ id: m.id, uuid: m.uuid, title: m.title, snippet: m.enc ? '' : htmlToText(m.html).replace(/\s+/g, ' ').slice(0, 140), date: m.date, created: m.createdAt || m.date, reminder: m.reminder || null, labelIds: [...m.labelIds], pinned: m.labelIds.includes('STARRED'), color: m.color, locked: !!m.enc, links: m.links || [], tags: m.enc ? [] : tagsIn(m.title + ' ' + htmlToText(m.html)) });
   const w = (x, ms = 200) => new Promise(r => setTimeout(() => r(x), ms));
   const find = id => msgs.find(m => m.id === id);
   const dec = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))); };
   return {
     folders: () => w(folders.map(f => ({ ...f }))),
     list: (lid, trash) => w(msgs.filter(m => m.labelIds.includes(lid) && trash === m.labelIds.includes('TRASH')).map(meta), 300),
-    get: id => w({ ...meta(find(id)), html: find(id).html, created: '' }),
+    get: id => w({ ...meta(find(id)), html: find(id).enc ? '' : find(id).html, enc: find(id).enc || '', created: '' }),
     insert: (raw, labelIds) => {
       const txt = dec(raw); const i = txt.indexOf('\r\n\r\n'); const head = txt.slice(0, i), body = txt.slice(i + 4);
       const h = n => (head.match(new RegExp('^' + n + ': (.*)$', 'mi')) || [])[1] || '';
       let subj = h('Subject'); const ew = subj.match(/^=\?UTF-8\?B\?(.*)\?=$/); if (ew) subj = new TextDecoder().decode(Uint8Array.from(atob(ew[1]), c => c.charCodeAt(0)));
       const html = new TextDecoder().decode(Uint8Array.from(atob(body.replace(/\r\n/g, '')), c => c.charCodeAt(0))).replace(/^[\s\S]*<body>|<\/body>[\s\S]*$/g, '');
       const id = 'n' + (++seq);
-      msgs.push({ id, uuid: h('X-Universally-Unique-Identifier'), title: subj, html, date: Date.parse(h('Date')) || Date.now(), reminder: remParse(h('X-Suha-Reminder')), labelIds: [...labelIds], color: h('X-Suha-Color').trim(), created: h('X-Mail-Created-Date') });
+      const enc = h('X-Suha-Lock').trim() === '1' ? ((html.match(/suha-enc:(v1\.[\w-]+\.[\w-]+\.[\w-]+)/) || [])[1] || '') : '';
+      msgs.push({ id, enc, links: h('X-Suha-Links').split(/\s+/).filter(Boolean), uuid: h('X-Universally-Unique-Identifier'), title: subj, html, date: Date.parse(h('Date')) || Date.now(), reminder: remParse(h('X-Suha-Reminder')), labelIds: [...labelIds], color: h('X-Suha-Color').trim(), created: h('X-Mail-Created-Date') });
       return w({ id, threadId: id }, 300);
     },
     trash: id => { const m = find(id); if (m && !m.labelIds.includes('TRASH')) m.labelIds.push('TRASH'); return w({}); },
@@ -165,7 +169,8 @@ const N = {
   all: [], trash: null, q: '', loading: false,
   tag: null, hits: null,               // seçili #etiket, Gmail aramasından gelen not kimlikleri
   sort: store.get('nSort', 'date'), grid: store.get('nGrid', false), offline: false,
-  cur: null                            // açık not
+  cur: null,                           // açık not
+  sel: new Set(), selMode: false, todos: null   // toplu seçim, yapılacaklar görünümü
 };
 const realId = id => !!id && !String(id).startsWith('q:');   // "q:…" = çevrimdışı yazılıp henüz Gmail'e gitmemiş not
 const folderOf = n => N.folders.find(f => n.labelIds.includes(f.id));
@@ -180,6 +185,7 @@ function nShell() {
       <header class="bar">
         <h1 id="listTitle">Notlar</h1>
         <button class="btn sm new-note-btn" data-action="n-new">${IC.pen} Yeni not</button>
+        <button class="icon-btn" data-action="n-select" aria-label="Birkaç not seç" title="Birkaç not seç">${IC.checkSq}</button>
         <button class="icon-btn" data-action="n-view" aria-label="Görünüm ve sıralama" title="Görünüm ve sıralama">${IC.sliders}</button>
         <button class="icon-btn" data-action="n-refresh" aria-label="Yenile" title="Yenile">${IC.refresh}</button>
         <button class="icon-btn" data-action="notes-settings" aria-label="Ayarlar" title="Ayarlar">${IC.gear}</button>
@@ -205,6 +211,7 @@ function nEmptyReader() {
 }
 
 start = async function () {
+  if (!window.SUHA_PROGRAM) return window.suhaKapi();
   nShell();
   try {
     const p = await Gmail.profile();
@@ -254,6 +261,7 @@ function nRenderFolders() {
     + (N.root ? chip(N.root.id, 'Genel', `<i>${count(N.root.id)}</i>`) : '')
     + subFolders().map(f => chip(f.id, `${IC.folder}${esc(f.name)}`, `<i>${count(f.id)}</i>${N.view === f.id ? `<span class="nchip-more" data-action="n-folder-menu" data-id="${esc(f.id)}" title="Klasörü düzenle">${IC.more}</span>` : ''}`)).join('')
     + `<button type="button" class="nchip add" data-action="n-folder-new" title="Yeni klasör">${IC.plus}<span>Klasör</span></button>`
+    + chip('todos', `${IC.todo}Yapılacaklar`)
     + chip('trash', `${IC.trash}Silinenler`);
   el.querySelector('.nchip.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
@@ -282,7 +290,7 @@ function nSearchSoon() {
 }
 function nRenderTags() {
   const el = $('#nTags'); if (!el) return;
-  const pool = N.view === 'trash' ? [] : N.view === 'all' ? N.all : N.all.filter(n => n.labelIds.includes(N.view));
+  const pool = N.view === 'trash' || N.view === 'todos' ? [] : N.view === 'all' ? N.all : N.all.filter(n => n.labelIds.includes(N.view));
   const counts = new Map();
   for (const n of pool) for (const t of n.tags || []) counts.set(t, (counts.get(t) || 0) + 1);
   if (N.tag && !counts.has(N.tag)) N.tag = null;
@@ -293,8 +301,9 @@ function nRenderTags() {
 function nCard(n) {
   const f = N.view === 'all' ? folderOf(n) : null;
   const prev = (n.snippet || '').replace(n.title, '').replace(/☑\s*/g, '✓ ').replace(/☐\s*/g, '').trim();
-  return `<div class="note-card ${N.cur?.id === n.id ? 'sel' : ''} ${n.color ? 'tinted' : ''}" ${n.color ? `style="--nc:${nColor(n.color)}"` : ''} data-action="n-open" data-id="${esc(n.id)}">
-    <div class="note-title">${n.pinned && N.view !== 'trash' ? `<span class="npin">${IC.pinFill}</span>` : ''}${esc(n.title || 'Yeni not')}</div>
+  return `<div class="note-card ${N.cur?.id === n.id ? 'sel' : ''} ${N.selMode && N.sel.has(n.id) ? 'picked' : ''} ${n.locked ? 'locked' : ''} ${n.color ? 'tinted' : ''}" ${n.color ? `style="--nc:${nColor(n.color)}"` : ''} data-action="n-open" data-id="${esc(n.id)}">
+    ${N.selMode ? `<span class="nsel-cb ${N.sel.has(n.id) ? 'on' : ''}">${N.sel.has(n.id) ? IC.check : ''}</span>` : ''}
+    <div class="note-title">${n.pinned && N.view !== 'trash' ? `<span class="npin">${IC.pinFill}</span>` : ''}${n.locked ? `<span class="nlock-i">${IC.lockI}</span>` : ''}${esc(n.title || 'Yeni not')}</div>
     ${N.grid ? `<div class="note-gprev">${esc(prev)}</div><div class="note-meta"><span>${fmtDate(n.date)}</span></div>` : `<div class="note-meta"><span>${fmtDate(n.date)}</span><span class="note-prev">${esc(prev)}</span></div>`}
     ${(f && !f.root) || (n.reminder?.at > Date.now()) ? `<div class="ncard-tags">${f && !f.root ? `<span class="nfolder-tag">${IC.folder}${esc(f.name)}</span>` : ''}${n.reminder?.at > Date.now() ? `<span class="nfolder-tag nrem">${IC.bell}${esc(nWhen(n.reminder.at))}</span>` : ''}</div>` : ''}
   </div>`;
@@ -303,8 +312,9 @@ function nRenderList(loading) {
   const el = $('#list'); if (!el) return;
   el.classList.toggle('grid', !!N.grid && N.view !== 'trash');
   nRenderTags();
-  $('#listTitle').textContent = N.view === 'trash' ? 'Silinenler' : N.view === 'all' ? 'Notlar' : folderName(N.folders.find(f => f.id === N.view));
+  $('#listTitle').textContent = N.view === 'todos' ? 'Yapılacaklar' : N.view === 'trash' ? 'Silinenler' : N.view === 'all' ? 'Notlar' : folderName(N.folders.find(f => f.id === N.view));
   if (loading && !N.all.length) { el.innerHTML = skeleton(); return; }
+  if (N.view === 'todos') { nlTodosRender(el); nlBulkBar(); return; }
   const list = nVisible();
   let html = '';
   if (N.view === 'trash') {
@@ -316,6 +326,7 @@ function nRenderList(loading) {
   }
   if (!list.length && !(N.view === 'trash' && N.trash === null)) html += `<div class="list-msg">${N.q ? (N.hits === null && N.q.length > 1 && !N.offline ? 'Aranıyor…' : 'Sonuç bulunamadı') : N.tag ? 'Bu etikette not yok' : N.view === 'trash' ? 'Silinen not yok' : 'Henüz not yok'}</div>`;
   el.innerHTML = html;
+  nlBulkBar();
 }
 
 /* ───────── Not açma / yazma ───────── */
@@ -336,6 +347,7 @@ async function nOpen(id) {
     try { if (!realId(id)) throw new TypeError('bekliyor'); full = await NDB.get(id); nCacheBody(full); }
     catch (e) { const c = nCachedBody(id); if (!c || !nNetErr(e)) throw e; full = c; }
     if (N.cur?.id !== id) return;
+    if (full.enc) return nlOpenLocked(full);
     Object.assign(N.cur, { html: full.html, created: full.created || '', color: full.color || meta.color });
     nRenderEditor();
   } catch (e) { if (!(e instanceof AuthError)) $('#reader').innerHTML = `<div class="list-msg">Açılamadı: ${esc(e.message)}</div>`; }
@@ -387,7 +399,7 @@ function nRenderEditor(isNew) {
   r.innerHTML = `
     <div class="reader-bar note-bar">
       <button class="icon-btn back" data-action="back" aria-label="Geri">${IC.back}</button>
-      <span class="note-date">${isNew ? 'Yeni not' : fmtDate(n.date, true)}</span>
+      <span class="note-date">${isNew ? 'Yeni not' : fmtDate(n.date, true)}</span>${n.locked ? `<span class="nlock-b" title="Bu not kilitli">${IC.lockI}</span>` : ''}
       <span class="note-status" id="noteStatus"></span>
       <div class="spacer"></div>
       <button class="icon-btn ${n.pinned ? 'on' : ''}" data-action="n-pin" title="${n.pinned ? 'Sabitlemeyi kaldır' : 'Başa sabitle'}">${n.pinned ? IC.pinFill : IC.pinI}</button>
@@ -426,8 +438,10 @@ function nRenderEditor(isNew) {
       ${isNew && !n.html ? `<div class="ntpl" id="nTpl"><span>Şablonla başla</span>${NTPL.map((t, i) => `<button type="button" class="nchip" data-action="n-tpl" data-i="${i}">${esc(t[0])}</button>`).join('')}</div>` : ''}
       <div class="note-body" id="noteBody" contenteditable="true" spellcheck="true" lang="tr" autocorrect="on" autocapitalize="sentences" data-ph="Yazmaya başla…">${n.html}</div>
       <div class="ncount" id="nCount"></div>
+      <div class="nback" id="nBack" hidden></div>
     </div>`;
   const ti = $('#noteTitle'), bo = $('#noteBody');
+  nlBack(n);
   nWrapChecks(bo);
   const changed = () => {
     n.title = ti.value; n.html = nSerialize(bo); n.dirty = true;
@@ -598,8 +612,8 @@ document.addEventListener('selectionchange', () => { if (document.activeElement?
 /* ───────── Kaydetme ───────── */
 function nBuildRaw(n) {
   const encWord = s => /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + bytesToB64(utf8(s)) + '?=';
-  const title = n.title.trim() || htmlToText(n.html).split('\n')[0].replace(/[☐☑]\s*/g, '').slice(0, 80) || 'Yeni not';
-  const html = `<html><head></head><body>${n.html}</body></html>`;
+  const title = n.locked ? 'Kilitli not' : (n.title.trim() || htmlToText(n.html).split('\n')[0].replace(/[☐☑]\s*/g, '').slice(0, 80) || 'Yeni not');
+  const html = n.locked ? `<html><head></head><body><div>🔒 Bu not Suha Notlar ile kilitlendi; yalnızca parolayla açılır.</div><div style="color:#999;font-size:9px;word-break:break-all">suha-enc:${n.enc}</div></body></html>` : `<html><head></head><body>${n.html}</body></html>`;
   const lines = [
     `From: ${S.email}`, `Subject: ${encWord(title)}`, `Date: ${new Date(n.dateMs || Date.now()).toUTCString().replace('GMT', '+0000')}`,
     'X-Uniform-Type-Identifier: com.apple.mail-note', `X-Mail-Created-Date: ${n.created || new Date().toUTCString().replace('GMT', '+0000')}`,
@@ -607,21 +621,26 @@ function nBuildRaw(n) {
   ];
   if (n.color) lines.push(`X-Suha-Color: ${n.color}`);
   if (n.reminder?.at) lines.push(`X-Suha-Reminder: ${n.reminder.at}|${String(n.reminder.ev || '').replace(/[^\w-]/g, '')}`);
-  const tags = tagsIn(n.title + ' ' + htmlToText(n.html));
+  const tags = n.locked ? [] : tagsIn(n.title + ' ' + htmlToText(n.html));
   if (tags.length) lines.push(`X-Suha-Tags: ${tags.map(encodeURIComponent).join(' ')}`);
+  const links = n.locked ? [] : [...new Set([...String(n.html).matchAll(/href="#not:([\w-]+)"/g)].map(m => m[1]))].slice(0, 40);
+  if (links.length) lines.push(`X-Suha-Links: ${links.join(' ')}`);
+  if (n.locked) lines.push('X-Suha-Lock: 1');
   lines.push('MIME-Version: 1.0', 'Content-Type: text/html; charset=utf-8', 'Content-Transfer-Encoding: base64');
-  return { raw: toB64url(lines.join('\r\n') + '\r\n\r\n' + bytesToB64(utf8(html)).replace(/.{76}/g, '$&\r\n')), title, tags };
+  return { raw: toB64url(lines.join('\r\n') + '\r\n\r\n' + bytesToB64(utf8(html)).replace(/.{76}/g, '$&\r\n')), title, tags, links };
 }
 async function nSave(n = N.cur) {
   if (!n || !n.dirty || n.saving || n.trashed) return;
   clearTimeout(n.timer);
-  const empty = !n.title.trim() && !htmlToText(n.html).replace(/[☐☑]/g, '').trim();
+  const empty = !n.locked && !n.title.trim() && !htmlToText(n.html).replace(/[☐☑]/g, '').trim();
   if (empty && !n.id) { n.dirty = false; return; }                // boş yeni notu kaydetme
+  if (n.locked && !n.lockPw) { n.dirty = false; return; }          // kilitliyken (parola yokken) yazılmış bir şey olamaz
   n.saving = true; n.dirty = false;
   if (N.cur === n) nStatus('Kaydediliyor…');
   try {
+    if (n.locked) n.enc = await nlEncrypt(n.title, n.html, n.lockPw);
     const folder = folderOf(n)?.id || N.root?.id;
-    const { raw, title, tags } = nBuildRaw(n);
+    const { raw, title, tags, links } = nBuildRaw(n);
     if (N.offline && !navigator.onLine) throw new TypeError('Failed to fetch');
     const labelIds = [folder, ...(n.pinned ? ['STARRED'] : [])];
     const res = await NDB.insert(raw, labelIds);
@@ -630,8 +649,9 @@ async function nSave(n = N.cur) {
     if (old) await NDB.trash(old).catch(() => {});
     if (N.trash) N.trash = null;                                  // çöp listesi değişti
     N.all = N.all.filter(x => x.id !== old);
-    N.all.unshift({ id: n.id, uuid: n.uuid, title, snippet: htmlToText(n.html).replace(/\s+/g, ' ').slice(0, 140), date: n.date, created: Date.parse(n.created) || n.date, labelIds, pinned: n.pinned, color: n.color, tags, reminder: n.reminder || null });
-    nCacheBody({ id: n.id, title, html: n.html, color: n.color, created: n.created });
+    N.all.unshift({ id: n.id, uuid: n.uuid, title, locked: !!n.locked, links, snippet: n.locked ? '' : htmlToText(n.html).replace(/\s+/g, ' ').slice(0, 140), date: n.date, created: Date.parse(n.created) || n.date, labelIds, pinned: n.pinned, color: n.color, tags, reminder: n.reminder || null });
+    nCacheBody({ id: n.id, title, html: n.html, color: n.color, created: n.created, enc: n.locked ? n.enc : '' });
+    if (old) nlForget(old);
     nQueueDel(n.uuid);
     nRenderList(); nRenderFolders();
     if (N.cur === n) { nStatus(n.dirty ? 'Düzenleniyor' : 'Kaydedildi'); const d = $('.note-bar .note-date'); if (d) d.textContent = fmtDate(n.date, true); }
@@ -870,12 +890,13 @@ function nRemind() {
 /* ───────── Paylaşma ───────── */
 function nShareMenu(btn) {
   const n = N.cur; if (!n) return;
-  nPop(btn, `${nItem('mail', IC.mail, 'Mail olarak gönder…')}${nItem('pdf', IC.print, 'PDF olarak kaydet / yazdır')}${nItem('copy', IC.copy, 'Metni kopyala')}
+  nPop(btn, `${nItem('mail', IC.mail, 'Mail olarak gönder…')}${nItem('pdf', IC.print, 'PDF olarak kaydet / yazdır')}${nItem('md', IC.download, 'Markdown (.md) olarak indir')}${nItem('copy', IC.copy, 'Metni kopyala')}
     ${navigator.share ? nItem('share', IC.share, 'Diğer uygulamalarla paylaş…') : ''}`, v => {
     const text = nPlain(n);
     if (v === 'copy') navigator.clipboard?.writeText(text).then(() => toast('Not panoya kopyalandı'), () => toast('Kopyalanamadı'));
     if (v === 'share') navigator.share({ title: n.title || 'Not', text }).catch(() => {});
     if (v === 'pdf') nPrint(n);
+    if (v === 'md') nlExportMd(n);
     if (v === 'mail') nMailDialog(n);
   });
 }
@@ -915,7 +936,9 @@ function nPrint(n) {
 /* ───────── Diğer menüsü ───────── */
 function nMoreMenu(btn) {
   const n = N.cur; if (!n) return;
-  nPop(btn, `${nItem('move', IC.folder, 'Klasöre taşı…')}${nItem('find', IC.search, 'Bul ve değiştir')}${nItem('ver', IC.history, 'Eski sürümler', n.id ? '' : 'disabled')}${nItem('del', IC.trash, 'Notu sil', 'data-danger')}`, v => {
+  nPop(btn, `${nItem('move', IC.folder, 'Klasöre taşı…')}${nItem('find', IC.search, 'Bul ve değiştir')}${n.locked ? nItem('unlock', IC.lockI, 'Kilidi kaldır…') : nItem('lock', IC.lockI, 'Notu kilitle…')}${n.locked ? '' : nItem('ver', IC.history, 'Eski sürümler', n.id ? '' : 'disabled')}${nItem('del', IC.trash, 'Notu sil', 'data-danger')}`, v => {
+    if (v === 'lock') nlLockNote();
+    if (v === 'unlock') nlUnlockNote();
     if (v === 'move') nMoveMenu(btn);
     if (v === 'find') nFindOpen(true);
     if (v === 'ver') nVersions();
@@ -968,7 +991,7 @@ Object.assign(ACTIONS, {
   'n-refresh': () => nLoad(),
   refresh: () => nLoad(),
   'open-drawer': () => {},
-  'n-open': el => nOpen(el.dataset.id),
+  'n-open': el => N.selMode ? nlToggleSel(el.dataset.id) : nOpen(el.dataset.id),
   'n-folder': async (el, e) => {
     if (e?.target.closest('.nchip-more')) return;
     const id = el.dataset.id;
@@ -976,6 +999,7 @@ Object.assign(ACTIONS, {
     N.view = id; store.set('nFolder', id);
     setView('list'); nEmptyReader();
     nRenderFolders(); nRenderList();
+    if (id === 'todos') nlTodosLoad();
     if (id === 'trash') { N.trash = null; nRenderList(); try { await nLoadTrash(); } catch (err) { if (!(err instanceof AuthError)) toast('Silinenler yüklenemedi: ' + err.message); N.trash = []; } if (N.view === 'trash') nRenderList(); }
   },
   'n-folder-menu': (el, e) => { e?.stopPropagation(); nFolderMenu(el); },
@@ -1080,6 +1104,7 @@ function nFromCache() {
 function nCacheBody(n) {
   if (!n?.id) return;
   const b = store.get('nBodies', {});
+  if (n.enc) b[n.id] = { enc: n.enc, html: '', title: '', color: n.color || '', created: n.created || '', t: Date.now() }; else
   b[n.id] = { html: String(n.html || '').replace(/src="data:image\/[^"]{2000,}"/g, 'src="" alt="(resim çevrimdışıyken gösterilmez)"'), title: n.title, color: n.color || '', created: n.created || '', t: Date.now() };
   const keys = Object.keys(b).sort((x, y) => b[y].t - b[x].t);
   for (const k of keys.slice(80)) delete b[k];
@@ -1090,7 +1115,7 @@ const nQueue = () => store.get('nQueue', {});
 function nQueuePut(n) {
   const q = nQueue();
   const prev = q[n.uuid];
-  q[n.uuid] = { uuid: n.uuid, created: n.created, title: n.title, html: n.html, color: n.color, pinned: n.pinned,
+  q[n.uuid] = { uuid: n.uuid, created: n.created, title: n.locked ? '' : n.title, html: n.locked ? '' : n.html, locked: !!n.locked, enc: n.locked ? n.enc : '', color: n.color, pinned: n.pinned,
     folder: folderOf(n)?.id || N.root?.id, oldId: prev ? prev.oldId : (n.id && !String(n.id).startsWith('q:') ? n.id : null), t: Date.now() };
   store.set('nQueue', q);
   n.id = 'q:' + n.uuid; n.date = Date.now(); n.dirty = false;
@@ -1102,9 +1127,9 @@ function nApplyQueue() {
   const q = nQueue();
   for (const e of Object.values(q)) {
     N.all = N.all.filter(x => x.uuid !== e.uuid);
-    N.all.unshift({ id: 'q:' + e.uuid, uuid: e.uuid, title: e.title || htmlToText(e.html).split('\n')[0].slice(0, 80) || 'Yeni not', snippet: htmlToText(e.html).replace(/\s+/g, ' ').slice(0, 140),
+    N.all.unshift({ id: 'q:' + e.uuid, uuid: e.uuid, locked: !!e.locked, links: [], title: e.locked ? 'Kilitli not' : e.title || htmlToText(e.html).split('\n')[0].slice(0, 80) || 'Yeni not', snippet: htmlToText(e.html).replace(/\s+/g, ' ').slice(0, 140),
       date: e.t, created: Date.parse(e.created) || e.t, labelIds: [e.folder, ...(e.pinned ? ['STARRED'] : [])], pinned: e.pinned, color: e.color, tags: tagsIn(e.title + ' ' + htmlToText(e.html)), pending: true });
-    nCacheBody({ id: 'q:' + e.uuid, html: e.html, title: e.title, color: e.color, created: e.created });
+    nCacheBody({ id: 'q:' + e.uuid, html: e.html, title: e.title, color: e.color, created: e.created, enc: e.enc });
   }
 }
 let nFlushing = false;
@@ -1116,14 +1141,14 @@ async function nFlushQueue() {
   let done = 0;
   for (const e of items) {
     try {
-      const { raw, title, tags } = nBuildRaw({ ...e, labelIds: [e.folder] });
+      const { raw, title, tags, links } = nBuildRaw({ ...e, labelIds: [e.folder] });
       const labelIds = [e.folder || N.root?.id, ...(e.pinned ? ['STARRED'] : [])].filter(Boolean);
       const res = await NDB.insert(raw, labelIds);
       if (e.oldId) await NDB.trash(e.oldId).catch(() => {});
       nQueueDel(e.uuid);
       N.all = N.all.filter(x => x.uuid !== e.uuid);
-      N.all.unshift({ id: res.id, uuid: e.uuid, title, snippet: htmlToText(e.html).replace(/\s+/g, ' ').slice(0, 140), date: Date.now(), created: Date.parse(e.created) || Date.now(), labelIds, pinned: e.pinned, color: e.color, tags });
-      nCacheBody({ id: res.id, html: e.html, title, color: e.color, created: e.created });
+      N.all.unshift({ id: res.id, uuid: e.uuid, title, locked: !!e.locked, links, snippet: e.locked ? '' : htmlToText(e.html).replace(/\s+/g, ' ').slice(0, 140), date: Date.now(), created: Date.parse(e.created) || Date.now(), labelIds, pinned: e.pinned, color: e.color, tags });
+      nCacheBody({ id: res.id, html: e.html, title, color: e.color, created: e.created, enc: e.enc });
       if (N.cur?.uuid === e.uuid && !N.cur.dirty) { N.cur.id = res.id; nStatus('Kaydedildi'); }
       done++;
     } catch (err) { if (nNetErr(err)) break; }

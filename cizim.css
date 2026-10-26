@@ -1,0 +1,85 @@
+/* ───────── Çizim · çizim masası (koyu yeşil + krem kâğıt) ───────── */
+html:has(body.cz-app) { background: #1b2e25 !important; }
+html.cz-html, html.cz-html body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+body.cz-app { background: transparent !important; --bg-2: rgba(255,255,255,.06); --bg: rgba(255,255,255,.07); --bg-3: rgba(255,255,255,.12); --line: rgba(255,255,255,.13); --fg: #eef3ee; --fg-2: #b9cbbf; --fg-3: #8aa194; --sel: rgba(255,255,255,.12); --cz-vur: #f0c75e; color: #eef3ee; }
+body.cz-app :is(.sheet, .color-pop) { background: rgba(27, 46, 37, .97) !important; border-color: rgba(255,255,255,.14) !important; color: #eef3ee; --fg: #eef3ee; --fg-2: #b9cbbf; --fg-3: #8aa194; --bg: rgba(255,255,255,.07); --bg-2: rgba(255,255,255,.06); --bg-3: rgba(255,255,255,.12); --line: rgba(255,255,255,.13); }
+body.cz-app .seg { background: rgba(255,255,255,.09); } body.cz-app .seg button { color: #b9cbbf; } body.cz-app .seg button.on { background: #f0c75e; color: #2a2208; }
+body.cz-app .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); color: #eef3ee; }
+body.cz-app .btn.primary { background: #f0c75e; border-color: #f0c75e; color: #2a2208; font-weight: 650; }
+body.cz-app .brand-mark { background: #f0c75e; border-color: #f0c75e; color: #2a2208; box-shadow: none; }
+body.cz-app .sheet input, body.cz-app .sheet select { color: #eef3ee; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; padding: 8px 10px; font: inherit; }
+body.cz-app .sheet select option { background: #1b2e25; color: #eef3ee; }
+.cz-app svg { flex: none; }
+.spacer { flex: 1; }
+
+.cz-kabuk { height: 100%; display: flex; flex-direction: column; }
+.cz-ust { display: flex; align-items: center; gap: 6px; padding: calc(8px + env(safe-area-inset-top)) 10px 8px; background: #243b30; border-bottom: 1px solid var(--line); }
+.cz-ust h1 { margin: 0 4px 0 2px; font-size: 17px; letter-spacing: -.01em; }
+.cz-ad { flex: 1; min-width: 60px; max-width: 280px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--fg-2); font: inherit; font-size: 13px; padding: 5px 8px; text-overflow: ellipsis; }
+.cz-ad:hover, .cz-ad:focus { border-color: var(--line); outline: none; color: #fff; }
+.d { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 38px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--fg); font: inherit; font-size: 13.5px; cursor: pointer; flex: none; }
+.d:hover { background: rgba(255,255,255,.08); } .d.on { background: var(--cz-vur); color: #2a2208; } .d.k { border-color: var(--line); } .d:disabled { opacity: .35; cursor: default; }
+.cz-govde { flex: 1; display: flex; min-height: 0; position: relative; }
+.cz-arac { display: flex; flex-direction: column; gap: 3px; padding: 6px; background: #243b30; border-right: 1px solid var(--line); overflow-y: auto; scrollbar-width: none; }
+.cz-arac .d { flex-direction: column; gap: 1px; width: 54px; height: 50px; padding: 0; font-size: 10.5px; }
+.cz-arac .d svg { width: 20px; height: 20px; }
+.cz-arac hr { width: 70%; border: 0; border-top: 1px solid var(--line); margin: 3px auto; }
+.cz-alan { position: relative; flex: 1; min-width: 0; background: #f5f2e9; touch-action: none; }
+.cz-alan canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.cz-ip { position: absolute; left: 10px; top: 10px; padding: 6px 11px; border-radius: 10px; background: rgba(27,46,37,.9); color: #eef3ee; font-size: 12.5px; pointer-events: none; max-width: calc(100% - 20px); }
+.cz-durum { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 14px; padding: 5px 12px; background: rgba(27,46,37,.92); color: #eef3ee; font-size: 12.5px; font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; overflow: hidden; }
+.cz-durum b { color: var(--cz-vur); font-weight: 600; }
+.cz-kom { position: absolute; left: 10px; right: 10px; bottom: 34px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 14px; background: rgba(27,46,37,.94); border: 1px solid rgba(255,255,255,.14); color: #eef3ee; font-size: 13px; }
+.cz-kom:empty { display: none; }
+.cz-kom input { width: 120px; font: inherit; font-size: 15px; padding: 6px 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; }
+.cz-kom .d { height: 32px; font-size: 13px; }
+.cz-yan { width: 232px; padding: 10px; background: #243b30; border-left: 1px solid var(--line); overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.cz-yan h4 { margin: 4px 0 0; font-size: 11.5px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; justify-content: space-between; }
+.cz-kat { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; }
+.cz-kat.on { border-color: var(--cz-vur); background: rgba(240,199,94,.1); }
+.cz-kat input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; flex: none; cursor: pointer; }
+.cz-kat span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.cz-kat select { width: 56px; font-size: 11.5px; padding: 3px; background: rgba(255,255,255,.07); color: var(--fg); border: 1px solid var(--line); border-radius: 7px; }
+.cz-kat button { border: 0; background: transparent; color: var(--fg-2); padding: 3px; cursor: pointer; border-radius: 6px; }
+.cz-ozel { font-size: 12.5px; color: var(--fg-2); line-height: 1.55; }
+.cz-ozel b { color: #fff; }
+.cz-mobil { display: none; }
+.cz-liste { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.cz-liste-o { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.06); }
+.cz-liste-o div { flex: 1; min-width: 0; } .cz-liste-o b { display: block; font-size: 14.5px; } .cz-liste-o span { font-size: 12px; color: var(--fg-3); }
+.cz-satir { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; } .cz-satir > span { min-width: 90px; font-size: 14px; color: var(--fg-2); }
+.cz-not { font-size: 12.5px; line-height: 1.55; color: var(--fg-3); margin: 6px 0; } .cz-not.uy { color: #ffd89c; } .cz-not.iy { color: #9ce6b4; }
+@media (max-width: 760px) {
+  .cz-govde { flex-direction: column-reverse; }
+  .cz-arac { flex-direction: row; border-right: 0; border-top: 1px solid var(--line); padding: 5px 6px calc(5px + env(safe-area-inset-bottom)); overflow-x: auto; overflow-y: hidden; }
+  .cz-arac .d { width: 50px; flex: none; } .cz-arac hr { width: 0; height: 30px; border-top: 0; border-left: 1px solid var(--line); margin: auto 3px; }
+  .cz-yan { position: absolute; right: 8px; top: 8px; width: 240px; border: 1px solid var(--line); border-radius: 14px; z-index: 5; display: none; max-height: 70%; }
+  .cz-yan.ac { display: flex; } .cz-mobil { display: inline-flex; } .cz-ad { display: none; }
+  .cz-kom { bottom: 32px; }
+}
+@media (max-width: 760px) {
+  .cz-ust { gap: 3px; padding-left: 8px; padding-right: 8px; overflow-x: auto; scrollbar-width: none; }
+  .cz-ust h1 { display: none; } .cz-ust .d { min-width: 34px; padding: 0 7px; font-size: 12px; } .cz-ust .d span { display: none; } .cz-ust .spacer { flex: 1 0 0; }
+}
+
+/* ── Çizim eklemeleri: semboller, katman satırı ── */
+.cz-yan { width: 262px; }
+.cz-kat select[data-a="kat-lt"] { width: 46px; padding: 3px 2px; }
+.cz-kat select[data-a="kat-kal"] { width: 52px; }
+.cz-semliste { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.cz-sem { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); cursor: pointer; text-align: center; font-size: 12px; }
+.cz-sem:hover { border-color: #f0c75e; }
+.cz-sem canvas { width: 100%; max-width: 120px; height: auto; background: rgba(0,0,0,.18); border-radius: 8px; }
+.cz-sem .icon-btn { position: absolute; top: 2px; right: 2px; transform: scale(.8); }
+.cz-kom input[id=czKal] { width: 70px; }
+@media (max-width: 760px) { .cz-yan { width: 262px; } }
+
+/* ── Semboller: kategori başlıkları, büyük küçük resimler, ölçü kutuları ── */
+.cz-semb { margin: 14px 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #b9cbbf; }
+.cz-semliste { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
+.cz-sem { background: rgba(255,255,255,.05); }
+.cz-sem canvas { background: #f5f2e9; border-radius: 8px; max-width: none; }
+.cz-sem span { font-weight: 550; line-height: 1.25; }
+.cz-p { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #b9cbbf; }
+.cz-p input { width: 64px; }
+#czSemAra { padding: 9px 12px; }

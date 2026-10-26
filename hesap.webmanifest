@@ -1,0 +1,67 @@
+{
+  "id": "./hesap.html",
+  "name": "Hesap",
+  "short_name": "Hesap",
+  "description": "Hesap makinesi, günlük hesaplar (KDV, kredi, mevduat, indirim), birim ve döviz çevirici, hesap kâğıdı.",
+  "start_url": "./hesap.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8eaed",
+  "theme_color": "#26282c",
+  "icons": [
+    {
+      "src": "hesap-192.png?v=8",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "hesap-512.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "hesap-maskable.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hesap kâğıdı",
+      "short_name": "Kâğıt",
+      "url": "./hesap.html?kagit",
+      "icons": [
+        {
+          "src": "hesap-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Günlük hesaplar",
+      "short_name": "Günlük",
+      "url": "./hesap.html?gunluk",
+      "icons": [
+        {
+          "src": "hesap-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Döviz",
+      "short_name": "Çevir",
+      "url": "./hesap.html?cevir",
+      "icons": [
+        {
+          "src": "hesap-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

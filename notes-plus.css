@@ -1,0 +1,74 @@
+/* Notlar · ek özellikler ve görsel cila (19 Ekim 2026) */
+body.notes-app { --nacc: #c2610c; -webkit-font-smoothing: antialiased; }
+/* Kilit */
+.nlock-i, .nlock-b { display: inline-flex; vertical-align: -2px; margin-right: 5px; color: var(--nacc); }
+.nlock-i svg, .nlock-b svg { width: 15px; height: 15px; }
+.nlock-b { margin: 0 2px 0 8px; }
+.note-card.locked .note-title { letter-spacing: .01em; }
+.nlock-wrap { display: grid; place-items: center; min-height: 60vh; }
+.nlock-box { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(320px, 86%); padding: 30px 22px; border-radius: 22px; background: color-mix(in srgb, var(--bg-2) 80%, transparent); border: 1px solid var(--line); text-align: center; animation: nIn .35s cubic-bezier(.2,.8,.3,1) both; }
+.nlock-box h2 { margin: 4px 0 0; font-size: 19px; }
+.nlock-box p { margin: 0 0 6px; color: var(--fg-2); font-size: 14px; }
+.nlock-box input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; text-align: center; letter-spacing: .12em; }
+.nlock-box .btn { width: 100%; justify-content: center; }
+.nlock-ico { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; background: color-mix(in srgb, var(--nacc) 16%, transparent); color: var(--nacc); }
+.nlock-ico svg { width: 28px; height: 28px; }
+.nlock-err { min-height: 18px; color: #d33a3f; font-size: 13px; }
+.nlock-hint { font-size: 12.5px; color: var(--fg-3); line-height: 1.5; margin: 2px 0 6px; }
+.nlock-box.shake { animation: nShake .35s; }
+@keyframes nShake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+/* Bu nota bağlananlar */
+.nback { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.nback[hidden] { display: none; }
+.nback-t { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); font-weight: 650; }
+.nback-t svg { width: 14px; height: 14px; }
+.nback .nchip svg { width: 14px; height: 14px; margin-right: 5px; }
+/* Toplu seçim */
+.note-card { position: relative; }
+.nsel-cb { position: absolute; right: 12px; top: 12px; width: 22px; height: 22px; border-radius: 50%; border: 1.8px solid var(--fg-3); display: grid; place-items: center; background: var(--bg); color: #fff; }
+.nsel-cb.on { background: var(--nacc); border-color: var(--nacc); }
+.nsel-cb svg { width: 14px; height: 14px; }
+.note-card.picked { outline: 2px solid var(--nacc); outline-offset: -2px; }
+.notes-shell.selmode .fab { display: none !important; }
+.nbulk { position: sticky; bottom: 10px; z-index: 6; display: flex; align-items: center; gap: 2px; margin: 8px 10px 10px; padding: 6px 8px; border-radius: 18px; background: color-mix(in srgb, var(--bg-2) 92%, transparent); border: 1px solid var(--line); box-shadow: 0 10px 30px -8px rgba(0,0,0,.35); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); animation: nIn .22s ease-out both; }
+.nbulk-n { flex: 1; font-size: 13.5px; font-weight: 600; padding-left: 6px; white-space: nowrap; }
+.nbulk .icon-btn:disabled { opacity: .35; }
+.nbulk .icon-btn.danger:hover { color: #d33a3f; }
+.listpane { position: relative; }
+/* Yapılacaklar görünümü */
+.ntodo-top { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; color: var(--fg-2); font-size: 14px; }
+.ntodo-top b { font-size: 22px; color: var(--fg); }
+.ntodo-top .nchip { margin-left: auto; }
+.ntodo-g { margin: 0 8px 8px; padding: 10px 12px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.ntodo-g:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -10px rgba(0,0,0,.3); }
+.ntodo-h { display: flex; align-items: center; gap: 7px; font-weight: 650; font-size: 14.5px; margin-bottom: 6px; }
+.ntodo-h svg { width: 16px; height: 16px; color: var(--nacc); }
+.ntodo-h i { margin-left: auto; font-style: normal; font-size: 12px; color: var(--fg-3); }
+.ntodo-i { display: flex; align-items: flex-start; gap: 9px; padding: 4px 0; font-size: 14px; line-height: 1.35; }
+.ntodo-i.done { color: var(--fg-3); text-decoration: line-through; }
+.ntodo-b { flex: none; width: 17px; height: 17px; margin-top: 1px; border-radius: 5px; border: 1.6px solid var(--fg-3); display: grid; place-items: center; }
+.ntodo-b.on { background: var(--nacc); border-color: var(--nacc); color: #fff; }
+.ntodo-b svg { width: 12px; height: 12px; }
+/* Cila: hareket, yuvarlak köşeler */
+@keyframes nIn { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+.notes-list .note-card { border-radius: 14px; transition: transform .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s, background .16s; animation: nIn .32s cubic-bezier(.2,.8,.3,1) both; }
+.notes-list .note-card:hover { transform: translateY(-1px); }
+.notes-list .note-card:active { transform: scale(.985); }
+.notes-list .note-card:nth-child(n+8) { animation-delay: .12s; }
+.fab { box-shadow: 0 10px 24px -8px rgba(0,0,0,.45); transition: transform .15s; }
+.fab:active { transform: scale(.95); }
+.ntools { border-radius: 0; }
+.ntools button { transition: background .12s, transform .1s; }
+.ntools button:active { transform: scale(.92); }
+.ppop, .npop { animation: nIn .14s ease-out both; }
+.reader .reader-scroll { animation: nIn .25s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .notes-app *, .notes-app *::before { animation: none !important; transition: none !important; } }
+/* Telefon: biçim çubuğu iki satıra bölünür, hepsi görünür; dokunma alanları büyür */
+@media (max-width: 700px) {
+  .ntools { flex-wrap: wrap; overflow: visible; gap: 3px; padding: 8px 10px; }
+  .ntools button { min-width: 40px; height: 40px; border-radius: 11px; }
+  .ntools button svg { width: 20px; height: 20px; }
+  .ntools-sep { display: none; }
+  .nbulk { margin: 8px 8px calc(10px + env(safe-area-inset-bottom)); }
+  .nbulk .icon-btn { width: 40px; height: 40px; }
+}

@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mail — Gizlilik</title>
-<link rel="icon" href="icon-192.png?v=4">
+<link rel="icon" href="icon-192.png?v=8" data-koyu="icon-192-koyu.png?v=8">
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; color: #2b3036;
@@ -24,7 +24,7 @@
 <body>
 <main>
   <h1>Mail — Gizlilik Politikası</h1>
-  <p class="muted">Son güncelleme: 12 Ekim 2026</p>
+  <p class="muted">Son güncelleme: 19 Ekim 2026</p>
 
   <p>Mail, Sinan Erdoğan tarafından kişisel kullanım için geliştirilmiş bir Gmail istemcisidir.
   Web adresi <a href="https://projectsuha.github.io/mail/">projectsuha.github.io/mail</a>; ayrıca Windows programı olarak da kullanılabilir.</p>
@@ -71,11 +71,22 @@
   bilgisiyle birlikte aynı yere iletilir. Kaydınızın silinmesini isterseniz aşağıdaki adrese yazmanız yeterlidir.</p>
 
   <h2>Pano</h2>
-  <p>Pano uygulaması Gmail'inize erişmez; yalnızca kimliğinizi ve Google Drive'da <b>kendi oluşturduğu</b> dosyaları görme iznini ister.
-  Panolarınız Drive'ınızdaki "Suha Pano" klasöründe dosya olarak saklanır; Drive'daki diğer dosyalarınıza erişilemez.
-  Panolar arada başka bir sunucuya gönderilmez. Bir panoyu sildiğinizde Drive'ın çöp kutusuna gider.
-  "Notlar'dan ekle", "Mail'den ekle" ya da "Takvim'e ekle"yi ilk kullandığınızda Pano ayrıca Gmail ya da Google Takvim izni ister;
-  bu izinler yalnızca seçtiğiniz notları/mailleri panoya eklemek ve sizin istediğiniz etkinlikleri oluşturmak için kullanılır.</p>
+  <p>Pano uygulaması giriş istemez ve varsayılan olarak hiçbir yere bağlanmaz. Panoların yalnızca kendi cihazında saklanır; hiçbir sunucuya gönderilmez. Sildiğin pano 7 gün boyunca geri alınabilir, sonra tamamen silinir.
+  Yedek dosyasını sen istediğinde indirir, sen seçtiğinde geri yüklersin.
+  Eskiden Drive'a kaydettiğin panoları görmek istersen Ayarlar'dan "Drive'ı aç" ile isteğe bağlı olarak Google ile giriş yapabilirsin; bu modda Pano yalnızca kimliğini ve Drive'da <b>kendi oluşturduğu</b> dosyaları görme iznini ister, Gmail'ine erişmez.
+  Bu modda "Notlar'dan ekle", "Mail'den ekle" ya da "Takvim'e ekle"yi ilk kullandığında ayrıca Gmail ya da Google Takvim izni istenir; bu izinler yalnızca seçtiğin notları/mailleri panoya eklemek ve senin istediğin etkinlikleri oluşturmak için kullanılır.</p>
+
+  <h2>Notlar — kilitli notlar</h2>
+  <p>Notlar Gmail hesabında durur. Bir notu kilitlersen içeriği ve başlığı <b>cihazında</b>, senin parolandan türetilen anahtarla şifrelenir (PBKDF2-SHA256, AES-256-GCM); Gmail'e yalnızca şifreli metin ve "Kilitli not" başlığı gider. Parola hiçbir yere gönderilmez ve kaydedilmez; unutulursa not kurtarılamaz. Kilitleme öncesindeki eski sürümler Gmail'in Silinenler klasöründe 30 gün kalır. 5 dakika işlem yapılmazsa ya da uygulama 1 dakika arka planda kalırsa kilitli not yeniden kilitlenir.</p>
+
+  <h2>Borsa</h2>
+  <p>Borsa uygulaması Gmail'inize erişmez; yalnızca kimliğinizi ve Google Drive'da <b>kendi oluşturduğu</b> dosyaları görme iznini ister.
+  İzleme listeleriniz, portföy işlemleriniz ve alarmlarınız Drive'ınızdaki "Suha Borsa.json" dosyasında; fiyatlar ise yine Drive'ınızdaki
+  "Suha Borsa Fiyatlar" tablosunda Google Finance ile hesaplanır. Portföyünüz başka bir sunucuya gönderilmez.</p>
+  <p>Grafik geçmişi, haberler ve sembol araması, programın sahibinin Google hesabındaki Suha Servis üzerinden alınır; bu isteklerde
+  yalnızca sorduğunuz sembol (ör. THYAO) ve kimlik kartınız gider. Fiyat alarmı kurarsanız alarmın sembolü, seviyesi ve e-posta adresiniz
+  aynı yerde saklanır ki seviye geçildiğinde size mail gönderilebilsin; alarmı sildiğinizde bu kayıt da silinir.
+  Fiyatlar 15-20 dakika gecikmelidir ve hatalı olabilir. Borsa alım-satım yapmaz ve yatırım tavsiyesi vermez.</p>
 
   <h2>Tara</h2>
   <p>Tara belge tarayıcısı giriş yapmadan çalışır. Kamerayla çektiğiniz ya da seçtiğiniz fotoğraflar, kenar bulma, düzeltme, filtreler ve
@@ -92,6 +103,47 @@
 
   <h2>Barkod</h2>
   <p>Barkod ve etiket oluşturucu giriş istemez ve hiçbir veriyi sunucuya göndermez. Barkodlar, etiket tasarımları, yüklediğiniz Excel/CSV listeleri ve logolar yalnızca kendi cihazınızda işlenir ve saklanır (tarayıcının yerel deposu). Basmadan önceki okuma kontrolü de cihazınızda yapılır. Tarayıcı verilerini silerseniz tasarımlar da silinir; ayarlardan yedek alabilirsiniz.</p>
+
+  <h2>Hesap</h2>
+  <p>Hesap makinesi giriş istemez. Hesap geçmişi, hafıza, hesap kâğıtları ve günlük hesaplara yazdıkların yalnızca kendi cihazınızda saklanır. Döviz çeviricisi, güncel kurları almak için Avrupa Merkez Bankası verilerini yayınlayan Frankfurter hizmetinden (api.frankfurter.dev) yalnızca kur listesini indirir; bu sırada sizin hiçbir bilginiz ya da yazdığınız tutar gönderilmez.</p>
+  <h2>Saat</h2>
+  <p>Saat uygulaması giriş istemez ve hiçbir yere bağlanmaz. Alarmlar, eklediğin şehirler, zamanlayıcılar, kronometre turları ve odak sayısı yalnızca kendi cihazında saklanır. Alarm sesleri cihazda üretilir. Tarayıcıda bildirim iznini verirsen ya da Android programında alarm kurarsan, bildirimler telefonun kendi bildirim sistemiyle gösterilir; bu sırada hiçbir bilgi dışarı gönderilmez.</p>
+  <h2>Takvim</h2>
+  <p>Takvim uygulaması giriş istemez ve hiçbir yere bağlanmaz. Etkinliklerin, hatırlatmaların ve ayarların yalnızca kendi cihazında saklanır. .ics ya da yedek dosyasını sen istediğinde indirir ve yine sen seçtiğinde içe aktarırsın; dosyalar hiçbir yere gönderilmez. Hatırlatmalar cihazın kendi bildirim sistemiyle gösterilir. Resmî tatil listesi uygulamanın içindedir, internetten indirilmez.</p>
+  <h2>Kitaplık</h2>
+  <p>Kitaplık giriş istemez ve hiçbir yere bağlanmaz. Eklediğin kitaplar (EPUB, PDF, TXT), vurguların, notların, ayraçların ve okuma süren yalnızca kendi cihazında saklanır; hiçbir yere gönderilmez. Kitap dosyaları açılırken içlerindeki betik, biçim ve dış bağlantılar çalıştırılmaz; yalnızca metin ve resimler gösterilir. Sesli okuma cihazının kendi konuşma motorunu kullanır; bazı cihazlarda çevrimiçi sesler de listelenir, bunlar “çevrimiçi” diye işaretlenir ve istersen seçmezsin. Yedek dosyasını sen istediğinde indirir, sen seçtiğinde geri yüklersin.</p>
+  <h2>Galeri</h2>
+  <p>Galeri giriş istemez ve internete hiçbir şey göndermez. Eklediğin fotoğraf ve videolar yalnızca bu cihazda, tarayıcının kendi depolamasında (IndexedDB) durur; "Yerler" sayfasındaki yer adları cihazında, internetsiz hesaplanır. Bir albümü kilitlersen içindeki dosyalar, adlar, tarihler ve konumlar senin parolandan türetilen anahtarla cihazında şifrelenir (PBKDF2-SHA256, AES-256-GCM); parola kaydedilmez, unutulursa albüm kurtarılamaz. Kilitli albüm 5 dakika işlem yapılmazsa ya da uygulama 1 dakika arka planda kalırsa yeniden kilitlenir. "Haritada aç"a basarsan, onayınla yalnızca o fotoğrafın konumu OpenStreetMap sitesine gönderilir. Paylaşırken ve indirirken konum bilgisini silme ayarı açıktır. Tarayıcı verilerini silersen ya da uygulamayı kaldırırsan galerin de silinir; bu yüzden Ayarlar'dan yedek almanı öneririz.</p>
+
+  <h2>Müzik</h2>
+  <p>Müzik giriş istemez ve internete hiçbir şey göndermez. Eklediğin müzik dosyaları, kapak resimleri, çalma listeleri, favoriler ve çalma sayıların yalnızca bu cihazda, tarayıcının kendi depolamasında (IndexedDB) durur. Şarkı adı, sanatçı ve kapak, dosyaların kendi etiketlerinden cihazında okunur. Ekolayzır ve uyku zamanlayıcı cihazında çalışır. İstersen tüm müziğini tek bir ZIP dosyasına yedekleyebilir, istediğin zaman silebilirsin.</p>
+  <h2>Kişiler</h2>
+  <p>Kişiler giriş istemez ve internete hiçbir şey göndermez. Kişilerin, grupların, fotoğrafların, notların ve doğum günlerin yalnızca bu cihazda, tarayıcının kendi depolamasında (IndexedDB) durur. Telefon rehberinden seçersen yalnızca seçtiğin kişiler kopyalanır; seçim tarayıcının kendi penceresiyle yapılır. WhatsApp'ı açmayı seçersen, ancak sen onayladıktan sonra numara WhatsApp'ın bağlantısına (wa.me) iletilir. Yedek ve dışa aktarma .vcf dosyası olarak cihazına iner; istediğin zaman tüm rehberi silebilirsin.</p>
+  <h2>Kamera</h2>
+  <p>Kamera giriş istemez ve internete hiçbir şey göndermez. Kamera ve (video çekerken) mikrofon izni yalnızca tarayıcının kendi izin penceresiyle istenir; görüntü cihazından çıkmaz. Çektiğin fotoğraf ve videolar doğrudan Galeri'nin depolamasına (IndexedDB) yazılır. Konum bilgisi hiçbir zaman eklenmez. Uygulamayı kapatınca ya da başka sekmeye geçince kamera hemen kapanır.</p>
+
+  <h2>Pusula</h2>
+  <p>Pusula giriş istemez ve hiçbir yere bağlanmaz. Yön ve konum telefonunun kendi algılayıcılarından okunur; konum yalnızca izin verirsen alınır ve sadece bu cihazda tutulur. Kaydettiğin yerler (ör. "Arabam") de yalnızca bu cihazda saklanır. Kıble, güneş ve ay hesapları cihazda yapılır. "Haritada aç" ya da "Paylaş" düğmesine bastığında koordinatın, seçtiğin harita uygulamasına ya da kişiye senin isteğinle gider.</p>
+  <h2>Ölçüm</h2>
+  <p>Ölçüm giriş istemez ve hiçbir yere bağlanmaz. Su terazisi ve açıölçer telefonun hareket algılayıcısını kullanır. Ses ölçer mikrofonu yalnızca sen "Ölçmeye başla"ya bastığında açar; ses kaydedilmez, saklanmaz ve gönderilmez, sadece o anki ses seviyesi hesaplanır. Sekmeden çıkınca ya da uygulamayı arka plana alınca mikrofon kapanır. Cetvel ayarın ve diğer ayarlar yalnızca bu cihazda saklanır.</p>
+  <h2>Hava</h2>
+  <p>Hava uygulaması giriş istemez. Hava durumunu göstermek için seçtiğin yerin yaklaşık koordinatı (yaklaşık 100 metreye yuvarlanmış) Open-Meteo hava servisine (open-meteo.com) gönderilir; hava kalitesi ve polen de aynı servisten (Copernicus verisi) alınır. Konumunu kullanırsan, yerin adını bulmak için aynı yaklaşık koordinat BigDataCloud servisine (bigdatacloud.com) gönderilir. Şehir aradığında yazdığın yer adı Open-Meteo arama servisine gider. Bu servislere adın, e-postan ya da hesabın gönderilmez. Eklediğin yerler ve son alınan hava durumu yalnızca bu cihazda saklanır.</p>
+  <h2>Ses Kaydedici</h2>
+  <p>Ses Kaydedici giriş istemez ve hiçbir yere bağlanmaz. Mikrofon yalnızca kayıt düğmesine bastığında açılır ve kaydı bitirince kapanır. Kayıtların yalnızca bu cihazda (tarayıcının ya da programın kendi deposunda) saklanır; sunucuya, Google'a ya da başka bir yere gönderilmez. Bir kaydı "Paylaş" ya da "İndir" ile dışarı aldığında nereye gideceğine sen karar verirsin. Tarayıcı verilerini silersen kayıtlar da silinir.</p>
+  <h2>PDF</h2>
+  <p>PDF giriş istemez. Seçtiğin dosyalar (PDF ve fotoğraflar) yalnızca bu cihazın içinde, tarayıcının ya da programın kendisinde işlenir; hiçbir sunucuya, Google'a ya da başka bir yere gönderilmez ve hiçbir yerde saklanmaz. Sayfayı kapattığında dosyalar bellekten silinir. Sadece araçlarda son seçtiğin ayarlar (ör. filigran yazısı, sayfa numarasının yeri) bu cihazda hatırlanır. Hazırlanan dosyayı "İndir" ya da "Paylaş" ile dışarı aldığında nereye gideceğine sen karar verirsin.</p>
+  <h2>Kayıt Defteri</h2>
+  <p>Kayıt Defteri giriş istemez. Defterlerin, kayıtların ve eklediğin fotoğraflar yalnızca bu cihazda (tarayıcının ya da programın kendi deposunda) saklanır; sunucuya ya da başka bir yere gönderilmez. "Yedek dosyası" ile aldığın dosyanın nereye gideceğine sen karar verirsin. İstersen Ayarlar'dan Google Drive yedeğini açabilirsin: bunun için Google hesabınla giriş yapar ve yalnızca <code>drive.file</code> iznini verirsin. Bu izinle uygulama Drive'ındaki diğer dosyalarını göremez; yalnızca kendi oluşturduğu "Suha Kayıt Defteri" klasörüne tek bir yedek dosyası yazar ve geri yüklerken onu okur. Drive yedeğini kapattığında yeni yedek gönderilmez; Drive'daki dosyayı istediğin zaman kendin silebilirsin.</p>
+  <h2>El Feneri</h2>
+  <p>El Feneri giriş istemez ve internete bağlanmaz. Flaşı yakabilmek için tarayıcı ya da telefon kamera izni ister; kamera yalnızca ışığı yakmak için açılır, görüntü alınmaz, kaydedilmez ve hiçbir yere gönderilmez. Işık kapanınca kamera da kapatılır. Sadece son seçtiğin ayarlar (ışık türü, renk, süre) bu cihazda hatırlanır.</p>
+  <h2>Çizim</h2>
+  <p>Çizim giriş istemez ve internete bağlanmaz. Çizdiğin ve açtığın dosyalar (DXF, yedek dosyaları) yalnızca bu cihazda, tarayıcının ya da programın kendisinde işlenir; hiçbir sunucuya, Google'a ya da başka bir yere gönderilmez. Çizimin, istersen tarayıcının kendi deposunda (yalnızca bu cihazda) saklanır; PDF, DXF, SVG, PNG ve yedek dosyaları senin cihazına indirilir. Altlık olarak açtığın resim (üstünden çizmek için) cihazından çıkmaz, kaydedilmez ve dışa aktarılan dosyalara girmez; "Blok yap" ile kaydettiğin semboller de yalnızca bu tarayıcıda tutulur.</p>
+  <h2>Foto</h2>
+  <p>Foto giriş istemez ve internete bağlanmaz. Seçtiğin fotoğraflar yalnızca bu cihazda (tarayıcının ya da programın kendisinde) işlenir; hiçbir sunucuya, Google'a ya da başka bir yere gönderilmez ve hiçbir yerde saklanmaz. Sayfayı ya da programı kapatınca bellekten silinir. Küçülttüğün, kırptığın veya temizlediğin fotoğraflar yeni birer kopya olarak senin cihazına indirilir; özgün dosyana dokunulmaz.</p>
+  <h2>Video</h2>
+  <p>Video giriş istemez ve internete bağlanmaz. Seçtiğin videolar ve altyazılar yalnızca bu cihazda oynatılır; hiçbir yere gönderilmez ve kopyalanmaz. Kolay devam edebilmen için son izlediğin videoların adı, süresi, kaldığın yer ve küçük bir resmi bu cihazda hatırlanır; destekleyen tarayıcılarda dosyayı tek dokunuşla yeniden açmak için dosyanın yeri de saklanır (dosyanın kendisi değil). Bunları Ayarlar'dan silebilirsin.</p>
+  <h2>Kasa</h2>
+  <p>Kasa yalnızca Windows ve Android programı olarak dağıtılır; sitede yoktur. İnternete hiç bağlanmaz (Android sürümünde internet izni bile yoktur). Parolaların, kartların ve notların, yalnızca senin bildiğin ana parolayla cihazında şifrelenir (AES-256-GCM, PBKDF2-SHA256 600.000 tur). Ana parolan ve kurtarma anahtarın hiçbir yere kaydedilmez ve gönderilmez; bu yüzden ikisini birden kaybedersen kayıtlar geri getirilemez. Yedek, senin kaydettiğin şifreli bir dosyadır. Ekran görüntüsü ve telefonun bulut yedeği Kasa için kapalıdır.</p>
 
   <h2>Zamanlanmış gönderim</h2>
   <p>İsteğe bağlı "Google zamanlayıcısı" özelliğini kurarsanız, bu küçük betik <b>sizin kendi Google hesabınızda</b>

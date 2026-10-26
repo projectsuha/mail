@@ -5,7 +5,7 @@
 'use strict';
 
 window.APP_NAME = 'Barkod';
-window.APP_ICON = 'barkod-apple.png?v=1';
+window.APP_ICON = 'barkod-apple.png?v=8';
 window.APP_LEAD = 'Barkod ve etiket oluştur, A4 etiket kâğıdına ya da termal yazıcıya bas. Ücretsiz, filigransız.';
 
 const BSVG2 = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;

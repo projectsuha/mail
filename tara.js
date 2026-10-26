@@ -6,7 +6,7 @@
 'use strict';
 
 window.APP_NAME = 'Tara';
-window.APP_ICON = 'tara-apple.png?v=1';
+window.APP_ICON = 'tara-apple.png?v=8';
 window.APP_LEAD = 'Belgelerini tara, PDF yap, yazısını oku. Ücretsiz, filigransız; taramalar senin cihazında işlenir.';
 window.AUTH_STATE_PREFIX = 'tara-';
 window.APP_SCOPES = 'openid email ' + SC_DRIVE;
@@ -118,6 +118,11 @@ function kitaplikCiz() {
       <div class="brand-mark sm">${IC.tara}</div><h1>Tara</h1><div class="spacer"></div>
       <button class="icon-btn" data-action="t-ayar" title="Ayarlar">${IC.gear}</button>
     </header>
+    <button class="tr-vizor" data-action="t-tara" aria-label="Belge tara">
+      <i class="k k1"></i><i class="k k2"></i><i class="k k3"></i><i class="k k4"></i>
+      <span class="tr-vizor-kagit"><i></i><i></i><i></i><i></i></span><span class="tr-vizor-cizgi"></span>
+      <span class="tr-vizor-yazi"><span class="tr-vizor-dugme">${IC.kamera}</span><b>Belge tara</b><small>Kenarları kendisi bulur, eğriliği düzeltir, gölgeyi siler</small></span>
+    </button>
     <form class="searchbox tr-ara" id="tAraF">${IC.search}<input id="tAra" type="search" placeholder="Belgelerde ara (adı, etiketi, içindeki yazı)" value="${esc(T.q)}" autocomplete="off"></form>
     <div class="tr-cipler">
       <button class="tr-cip ${T.klasor === 'tum' && !T.etiket ? 'on' : ''}" data-action="t-klasor" data-k="tum">Tümü <span>${T.belgeler.length}</span></button>

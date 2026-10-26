@@ -1192,13 +1192,9 @@ body.notes-app .listpane > .bar h1 { padding-left: 0; }
 .login-screen { max-width: 460px; }
 .login-screen .login-sub { margin: 0 0 18px; font-size: 14px; }
 .login-screen .login-btn { width: 100%; max-width: 320px; }
-.trust { list-style: none; margin: 22px 0 6px; padding: 6px 4px; text-align: left; width: 100%; display: grid; gap: 2px;
-  border: 1px solid var(--line); border-radius: 16px; background: var(--bg-2); }
-.trust li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; }
-.trust li > svg { width: 20px; height: 20px; flex: none; margin-top: 1px; color: var(--fg-2); }
-.trust b { display: block; font-size: 14px; font-weight: 600; color: var(--fg); }
-.trust span { font-size: 12.5px; color: var(--fg-3); line-height: 1.45; }
-.trust span b { display: inline; font-size: inherit; color: var(--fg-2); }
+.guven { list-style: none; margin: 16px auto 4px; padding: 0; max-width: 440px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.guven li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); font-size: 13px; color: var(--fg-2); }
+.guven li > svg { width: 15px; height: 15px; flex: none; color: var(--fg-2); }
 .perm-list { width: 100%; text-align: left; margin-top: 8px; font-size: 13px; color: var(--fg-2); }
 .perm-list summary { cursor: pointer; padding: 8px 4px; color: var(--fg-2); font-weight: 550; list-style-position: inside; }
 .perm-list ul { margin: 2px 0 6px; padding: 0 6px 0 22px; display: grid; gap: 6px; line-height: 1.45; }
@@ -1378,3 +1374,94 @@ div.note-h { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 
 .nkeys > div { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--fg-2); }
 .nkeys kbd { align-self: flex-start; font: 600 12px ui-monospace, monospace; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-3); color: var(--fg); white-space: nowrap; }
 @media (max-width: 700px) { .nkeys-sec { display: none; } .nkeys { grid-template-columns: 1fr; } }
+
+/* Karakteri her temada koyu olan uygulamalar: açılan pencereler de koyu olsun (cam/düz temanın açık penceresi üstünde açık renk yazı okunmuyordu) */
+:is(body.tara-app, body.hs-app, body.zs-app, body.ol-app, body.fn-app, body.ks-app, body.borsa-app) :is(.sheet, .color-pop) { background: rgba(30, 32, 36, .95) !important; border-color: rgba(255,255,255,.1) !important; color: var(--fg); }
+body.hv-app :is(.sheet, .color-pop) { background: rgba(26, 42, 64, .95) !important; border-color: rgba(255,255,255,.12) !important; color: var(--fg); }
+:is(body.tara-app, body.hs-app, body.zs-app, body.ol-app, body.fn-app, body.ks-app, body.borsa-app, body.hv-app) .sheet :is(input, select, textarea) { color: var(--fg); }
+:is(body.tara-app, body.hs-app, body.zs-app, body.ol-app, body.fn-app, body.ks-app, body.borsa-app, body.hv-app) .sheet select option { background: #1e2024; color: #eee; }
+:is(body.tara-app, body.hs-app, body.zs-app, body.ol-app, body.fn-app, body.ks-app, body.borsa-app, body.hv-app) .sheet select { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); }
+body.vd-app :is(.sheet, .color-pop) { background: rgba(30, 32, 36, .95) !important; border-color: rgba(255,255,255,.1) !important; color: #f2f3f5; --fg: #f2f3f5; --fg-2: #c9ccd2; --fg-3: #8d9198; --bg: rgba(255,255,255,.06); --bg-2: rgba(255,255,255,.05); --bg-3: rgba(255,255,255,.1); --line: rgba(255,255,255,.1); --sel: rgba(255,255,255,.12); }
+body.vd-app .sheet .seg { background: rgba(255,255,255,.08); } body.vd-app .sheet .seg button { color: #c9ccd2; } body.vd-app .sheet .seg button.on { background: #e2453c; color: #fff; }
+body.vd-app .sheet .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); color: #f2f3f5; }
+
+/* ───── Karakter: Mail = uçak postası (açık mavi zarf kâğıdı, kırmızı-lacivert şerit, mühür kırmızısı) ───── */
+html:has(body.mail-app) { background: radial-gradient(50% 40% at 85% 0%, #f7f9fd 0%, transparent 70%), linear-gradient(180deg, #e8eef7, #dce5f1) fixed !important; }
+body.mail-app { --accent: #1d3a8a; --accent-fg: #fff; --accent-soft: rgba(29,58,138,.11); --sel: rgba(29,58,138,.1); --posta-k: #c8102e; --posta-l: #1d3a8a; }
+body.mail-app::before { content: ''; position: fixed; z-index: 60; left: 0; right: 0; top: 0; height: 5px; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, var(--posta-k) 0 12px, #fff 12px 18px, var(--posta-l) 18px 30px, #fff 30px 36px); }
+body.mail-app .row.unread::before { background: var(--posta-k); width: 7px; height: 7px; box-shadow: 0 0 0 2px rgba(200,16,46,.15); }
+body.mail-app .row.unread .date { color: var(--posta-l); }
+body.mail-app .row.sel { box-shadow: inset 3px 0 0 var(--posta-l); }
+body.mail-app .fab, body.mail-app .btn.primary { background: var(--posta-l); border-color: var(--posta-l); color: #fff; }
+body.mail-app .nav-item.active { color: var(--posta-l); }
+body.mail-app .listpane > .bar h1::after { content: ''; display: inline-block; width: 22px; height: 15px; margin-left: 8px; vertical-align: 1px; border-radius: 2px;
+  background: linear-gradient(135deg, transparent 46%, rgba(29,58,138,.55) 47% 53%, transparent 54%) , linear-gradient(45deg, transparent 46%, rgba(29,58,138,.55) 47% 53%, transparent 54%) top / 100% 50% no-repeat, #fff;
+  box-shadow: inset 0 0 0 1.5px rgba(29,58,138,.55); }
+html[data-theme="dark"]:has(body.mail-app) { background: radial-gradient(50% 40% at 85% 0%, #1d2b4a 0%, transparent 70%), linear-gradient(180deg, #111a2e, #0a101d) fixed !important; }
+html[data-theme="dark"] body.mail-app { --accent: #9db7ff; --accent-fg: #0b1220; --accent-soft: rgba(157,183,255,.14); --sel: rgba(157,183,255,.12); --posta-l: #7d9cf5; --posta-k: #f0475f; }
+html[data-theme="dark"] body.mail-app .fab, html[data-theme="dark"] body.mail-app .btn.primary { background: #2c4aa8; border-color: #2c4aa8; }
+html[data-theme="dark"] body.mail-app .listpane > .bar h1::after { background-color: #1a2440; }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"]:has(body.mail-app) { background: radial-gradient(50% 40% at 85% 0%, #1d2b4a 0%, transparent 70%), linear-gradient(180deg, #111a2e, #0a101d) fixed !important; }
+  html[data-theme="auto"] body.mail-app { --accent: #9db7ff; --accent-fg: #0b1220; --accent-soft: rgba(157,183,255,.14); --sel: rgba(157,183,255,.12); --posta-l: #7d9cf5; --posta-k: #f0475f; }
+  html[data-theme="auto"] body.mail-app .fab, html[data-theme="auto"] body.mail-app .btn.primary { background: #2c4aa8; border-color: #2c4aa8; }
+}
+
+/* ───── Karakter: Notlar = yapışkan not (krem pano, kâğıt kartlar, sarı) ───── */
+html:has(body.notes-app) { background: radial-gradient(circle, rgba(150,120,60,.13) 1px, transparent 1.4px) 0 0 / 18px 18px, linear-gradient(180deg, #f6f0de, #efe6cc) fixed !important; }
+body.notes-app { --accent: #b45309; --accent-fg: #fff; --accent-soft: rgba(217,119,6,.14); --sel: rgba(250,204,21,.28); --kagit: #fffdf5; }
+body.notes-app .listpane, body.notes-app .reader { background: transparent !important; }
+body.notes-app .notes-list .note-card { background: var(--kagit); border-radius: 4px 4px 4px 14px; margin: 0 10px 8px; box-shadow: 0 1px 0 rgba(120,90,30,.08), 0 4px 10px rgba(120,90,30,.1); }
+body.notes-app .notes-list .note-card.tinted { background: color-mix(in srgb, var(--nc) 48%, var(--kagit)); box-shadow: 0 1px 0 rgba(120,90,30,.08), 0 4px 10px rgba(120,90,30,.12); }
+body.notes-app .notes-list .note-card.sel { outline: 2px solid #f59e0b; outline-offset: -2px; }
+body.notes-app .notes-list .note-card:hover { transform: translateY(-1px); }
+body.notes-app .notes-list.grid .note-card:nth-child(3n+1) { transform: rotate(-.8deg); } body.notes-app .notes-list.grid .note-card:nth-child(3n+2) { transform: rotate(.6deg); }
+body.notes-app .nsec { color: #a16207; }
+body.notes-app .fab { background: #fcd34d; border-color: #f2c12e; color: #3b2a05; box-shadow: 0 8px 22px rgba(161,98,7,.3); }
+body.notes-app .btn.primary { background: #3b2a05; border-color: #3b2a05; color: #fff7d6; }
+body.notes-app .reader-scroll { background: var(--kagit); border-radius: 14px; margin: 0 12px 12px; box-shadow: 0 4px 14px rgba(120,90,30,.1); }
+@media (max-width: 800px) { body.notes-app .reader-scroll { margin: 0; border-radius: 0; } }
+html[data-theme="dark"]:has(body.notes-app) { background: radial-gradient(circle, rgba(255,220,150,.06) 1px, transparent 1.4px) 0 0 / 18px 18px, linear-gradient(180deg, #221d15, #17130d) fixed !important; }
+html[data-theme="dark"] body.notes-app { --kagit: #2b251b; --accent: #fbbf24; --accent-fg: #2b1d00; --sel: rgba(251,191,36,.18); }
+html[data-theme="dark"] body.notes-app .nsec { color: #e0b252; }
+html[data-theme="dark"] body.notes-app .notes-list .note-card, html[data-theme="dark"] body.notes-app .reader-scroll { box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+html[data-theme="dark"] body.notes-app .notes-list .note-card.tinted { background: color-mix(in srgb, var(--nc) 26%, var(--kagit)); }
+html[data-theme="dark"] body.notes-app .btn.primary { background: #fcd34d; border-color: #fcd34d; color: #2b1d00; }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"]:has(body.notes-app) { background: radial-gradient(circle, rgba(255,220,150,.06) 1px, transparent 1.4px) 0 0 / 18px 18px, linear-gradient(180deg, #221d15, #17130d) fixed !important; }
+  html[data-theme="auto"] body.notes-app { --kagit: #2b251b; --accent: #fbbf24; --accent-fg: #2b1d00; --sel: rgba(251,191,36,.18); }
+  html[data-theme="auto"] body.notes-app .notes-list .note-card.tinted { background: color-mix(in srgb, var(--nc) 26%, var(--kagit)); }
+  html[data-theme="auto"] body.notes-app .btn.primary { background: #fcd34d; border-color: #fcd34d; color: #2b1d00; }
+}
+
+/* ── gönderen avatarları (liste) ── */
+.mail-app .row { gap: 12px; align-items: center; }
+.row .avatar { width: 40px; height: 40px; font-size: 16px; }
+.mail-app .row.unread::before { display: none; }
+.mail-app .row.unread .avatar { box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px var(--bg-2); }
+.mail-app .row:hover .row-check { opacity: 1; }
+
+/* okuma paneli gönderen avatarı + compose Cc/Bcc düğmesi */
+.msg-av { width: 40px; height: 40px; font-size: 16px; }
+.cc-tog { flex: none; background: none; border: 0; color: var(--fg-3); font-size: 12.5px; cursor: pointer; padding: 5px 9px; border-radius: 7px; font-weight: 500; }
+.cc-tog:hover { background: var(--bg-3); color: var(--fg); }
+
+/* kenar çubuğu: aktif klasör vurgulu (ikon + yazı) */
+.nav-item.active { color: var(--accent); }
+.nav-item.active > svg:not(.tagic):not(.caret-ic) { color: var(--accent); }
+.nav-item { border-radius: 10px; transition: background .13s ease; }
+
+/* ── Program kapısı (tarayıcıda açılınca) ── */
+.kapi-over { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; padding: 24px;
+  background: radial-gradient(120% 90% at 30% 0%, #3a4049 0%, #272b31 55%, #1d2025 100%); color: #eef1f5;
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.kapi { max-width: 430px; text-align: center; }
+.kapi-logo { width: 88px; height: 88px; border-radius: 22px; box-shadow: 0 10px 34px rgba(0,0,0,.45); margin: 0 auto 18px; display: block; }
+.kapi h1 { font-size: 26px; margin: 0 0 10px; }
+.kapi p { color: #aab2bd; margin: 0 auto 22px; }
+.kapi p b { color: #eef1f5; }
+.kapi-btn { display: inline-block; background: linear-gradient(180deg, #4b9bff, #2f6fe0); color: #fff; text-decoration: none;
+  padding: 13px 26px; border-radius: 13px; font-weight: 650; box-shadow: 0 6px 20px rgba(47,111,224,.4); }
+.kapi-btn:hover { filter: brightness(1.07); }
+.kapi-alt { font-size: 12px; color: #6f7883; margin-top: 28px; }

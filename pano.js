@@ -5,7 +5,7 @@
 'use strict';
 
 window.APP_NAME = 'Pano';
-window.APP_ICON = 'pano-apple.png?v=1';
+window.APP_ICON = 'pano-apple.png?v=8';
 window.APP_LEAD = 'Fikirlerini yapışkan notlar, şekiller ve oklarla sonsuz bir tahtada topla. Panoların kendi Google Drive\'ında saklanır; arada başka bir sunucu yoktur.';
 window.AUTH_STATE_PREFIX = 'pano-';
 window.APP_SCOPES = 'openid email https://www.googleapis.com/auth/drive.file';
@@ -70,11 +70,14 @@ showLogin = function (msg) {
     <p>Yapışkan notlar, şekiller ve oklarla sonsuz bir tahta. Panoların kendi Google Drive'ında saklanır; program sadece kendi oluşturduğu pano dosyalarını görebilir.</p>
     ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
     <button class="btn primary" data-action="login">Google ile giriş yap</button>
+    ${guvenCipleri([[IC.shield, 'Şifren bize gelmez', 'Giriş Google\'ın kendi sayfasında yapılır (accounts.google.com).'], [IC.board, 'Panolar senin Drive\'ında', 'Sunucumuz yok; panolar kendi Google Drive\'ında saklanır.'], [IC.eye || IC.shield, 'Sadece kendi dosyalarını görür', 'Program Drive\'ında sadece kendi oluşturduğu pano dosyalarını görebilir.']])}
     <p class="muted sm" style="margin-top:14px"><a href="?demo">Örnek panolarla dene</a></p>
   </div>`;
 };
 
 /* ═════════ Veri katmanı: Google Drive (gerçek) ya da bellek (demo) ═════════ */
+if (new URLSearchParams(location.search).has('drive')) { store.set('panoDepo', 'drive'); history.replaceState(null, '', location.pathname); }
+const YEREL = !DEMO && store.get('panoDepo', 'yerel') !== 'drive';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files', DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
 async function dFetch(url, opt = {}) {
   let tok = Auth.token();
@@ -147,7 +150,32 @@ const PDB_DEMO = (() => {
     untrash: id => { boards.find(b => b.id === id).trashed = false; return w({}); }
   };
 })();
-const PDB = DEMO ? PDB_DEMO : PDB_REAL;
+/* Cihazda saklama (varsayılan): giriş yok, Drive yok. Panolar bu cihazın IndexedDB'sinde durur. */
+const PDB_LOCAL = (() => {
+  let db = null;
+  const ac = () => db ? Promise.resolve(db) : new Promise((res, rej) => {
+    const r = indexedDB.open('suha-pano', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('pano', { keyPath: 'id' });
+    r.onsuccess = () => { db = r.result; res(db); }; r.onerror = () => rej(r.error);
+  });
+  const is = async (mod, fn) => { const d = await ac(); return new Promise((res, rej) => { const t = d.transaction('pano', mod), q = fn(t.objectStore('pano')); t.oncomplete = () => res(q && q.result); t.onerror = t.onabort = () => rej(t.error || new Error('Depolama hatası')); }); };
+  const al = id => is('readonly', s => s.get(id));
+  const yaz = (id, f) => al(id).then(b => { if (!b) throw new Error('Pano bulunamadı'); return is('readwrite', s => s.put(f(b))); });
+  return {
+    async list() {
+      const hepsi = await is('readonly', s => s.getAll()), simdi = Date.now();
+      for (const b of hepsi) if (b.trashed && simdi - (b.trashedAt || 0) > 7 * 864e5) is('readwrite', s => s.delete(b.id)).catch(() => {});   // çöp 7 gün sonra silinir
+      return hepsi.filter(b => !b.trashed).map(({ id, title, modified }) => ({ id, title, modified })).sort((a, b) => b.modified - a.modified);
+    },
+    async get(id) { const b = await al(id); if (!b) throw new Error('Pano bulunamadı'); return JSON.parse(JSON.stringify(b.data)); },
+    async create(title, data) { const id = 'y' + uid() + uid(), modified = Date.now(); await is('readwrite', s => s.put({ id, title, data, modified, trashed: false })); return { id, modified }; },
+    async save(id, title, data) { const modified = Date.now(); await yaz(id, b => ({ ...b, title, data, modified, trashed: false })); return modified; },
+    rename: (id, title) => yaz(id, b => ({ ...b, title })),
+    trash: id => yaz(id, b => ({ ...b, trashed: true, trashedAt: Date.now() })),
+    untrash: id => yaz(id, b => ({ ...b, trashed: false }))
+  };
+})();
+const PDB = DEMO ? PDB_DEMO : YEREL ? PDB_LOCAL : PDB_REAL;
 
 /* ═════════ Durum ═════════ */
 const P = {
@@ -164,8 +192,18 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 
 /* ═════════ Başlangıç ve pano listesi ═════════ */
 start = async function () {
+  if (!window.SUHA_PROGRAM) return window.suhaKapi();
   try {
     let email = '';
+    if (YEREL) {   // giriş yok: doğrudan panolar
+      try { navigator.storage?.persist?.(); } catch {}
+      const u = new URLSearchParams(location.search);
+      if (u.has('yeni')) { history.replaceState(null, '', location.pathname); await pListLoad(false); return pNewDialog(); }
+      const last = store.get('panoLast');
+      await pListLoad();
+      if (last && P.boards.some(b => b.id === last) && !matchMedia('(max-width: 700px)').matches && store.get('panoReopen', true)) pOpen(last);
+      return;
+    }
     if (DEMO) email = 'demo@ornek.com';
     else {
       const b = jwtBody(store.get('idt')?.t || '');
@@ -193,6 +231,10 @@ async function pListLoad(render = true) {
   P.loading = false;
   if (render || !P.board) { pListShell(); }
 }
+let panoSort = store.get('panoSort', 'guncel');
+const SORT_ADLAR = { guncel: 'Son düzenlenen', ad: 'Ada göre', eski: 'Önce eski' };
+const sortLabel = () => SORT_ADLAR[panoSort] || 'Sırala';
+const SORTIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M7 5v14M7 5l-3 3M7 5l3 3M17 19V5M17 19l-3-3M17 19l3-3"/></svg>';
 function pListShell() {
   P.board = null; P.data = null;
   document.body.classList.remove('pano-open');
@@ -206,7 +248,10 @@ function pListShell() {
       <button class="icon-btn" data-action="p-settings" title="Ayarlar">${IC.gear}</button>
       <button class="btn primary" data-action="p-new">${IC.plus}<span>Yeni pano</span></button>
     </header>
-    <form class="searchbox pl-search" id="pSearchForm">${IC.search}<input id="pSearch" type="search" placeholder="Panolarda ara" autocomplete="off" value="${esc(P.q)}"></form>
+    <div class="pl-bar">
+      <form class="searchbox pl-search" id="pSearchForm">${IC.search}<input id="pSearch" type="search" placeholder="Panolarda ara" autocomplete="off" value="${esc(P.q)}"></form>
+      <button type="button" class="pl-sort" data-action="p-sort" title="Sıralama">${SORTIC}<span id="pSortLbl">${sortLabel()}</span></button>
+    </div>
     <div class="pl-grid" id="pGrid"></div>
   </div>`;
   $('#pSearch').addEventListener('input', e => { P.q = e.target.value.trim(); pListRender(); });
@@ -218,6 +263,9 @@ function pListRender() {
   if (P.loading && !P.boards.length) { el.innerHTML = Array.from({ length: 6 }, () => '<div class="pl-card skel"><div class="pl-thumb"></div><div class="pl-meta"><b></b></div></div>').join(''); return; }
   const k = P.q.toLocaleLowerCase('tr');
   const list = P.boards.filter(b => !k || b.title.toLocaleLowerCase('tr').includes(k));
+  if (panoSort === 'ad') list.sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+  else if (panoSort === 'eski') list.sort((a, b) => (a.modified || 0) - (b.modified || 0));
+  else list.sort((a, b) => (b.modified || 0) - (a.modified || 0));
   el.innerHTML = `<button type="button" class="pl-card pl-new" data-action="p-new"><div class="pl-thumb">${IC.plus}</div><div class="pl-meta"><b>Yeni pano</b><span>Boş ya da şablondan</span></div></button>`
     + list.map(b => {
       let th = ''; try { th = localStorage.getItem('panoThumb:' + b.id) || ''; } catch {}
@@ -283,10 +331,28 @@ const INK = ['#4b5563', '#1b1d21', '#e5484d', '#f08c2e', '#e2b714', '#3f9d50', '
 const FILLS = ['#ffffff', '#fff3b0', '#ffdcbf', '#ffd2e1', '#e3dcff', '#d6e4ff', '#d3f2d6', '#e8eaed', 'none'];
 // Şekil dolgusuna uygun koyu kenar rengi (FigJam gibi aynı tonun koyusu)
 const EDGE = { '#ffffff': '#1b1d21', '#fff3b0': '#c9a200', '#ffdcbf': '#e07a1f', '#ffd2e1': '#d6457a', '#e3dcff': '#7b5ad9', '#d6e4ff': '#4262ff', '#d3f2d6': '#2f9e47', '#e8eaed': '#6b717a', none: '#1b1d21' };
-const SHAPES = [['rect', 'Dikdörtgen'], ['round', 'Yuvarlak köşe'], ['ellipse', 'Elips'], ['diamond', 'Eşkenar dörtgen'], ['tri', 'Üçgen'], ['pill', 'Hap']];
+const SHAPES = [['rect', 'Dikdörtgen'], ['round', 'Yuvarlak köşe'], ['ellipse', 'Elips'], ['diamond', 'Eşkenar dörtgen'], ['tri', 'Üçgen'], ['pill', 'Hap'],
+  ['star', 'Yıldız'], ['hex', 'Altıgen'], ['pent', 'Beşgen'], ['para', 'Paralelkenar'], ['arrowR', 'Ok'], ['plus', 'Artı'], ['heart', 'Kalp'], ['cloud', 'Bulut'], ['bubble', 'Konuşma balonu'], ['cyl', 'Silindir']];
+const POLY = {
+  star: () => Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .42 : 1; return [.5 + .5 * r * Math.cos(a), .53 + .5 * r * Math.sin(a)]; }),
+  hex: () => [[.25, 0], [.75, 0], [1, .5], [.75, 1], [.25, 1], [0, .5]],
+  pent: () => [[.5, 0], [1, .38], [.81, 1], [.19, 1], [0, .38]],
+  para: () => [[.2, 0], [1, 0], [.8, 1], [0, 1]],
+  arrowR: () => [[0, .3], [.6, .3], [.6, 0], [1, .5], [.6, 1], [.6, .7], [0, .7]],
+  plus: () => [[.35, 0], [.65, 0], [.65, .35], [1, .35], [1, .65], [.65, .65], [.65, 1], [.35, 1], [.35, .65], [0, .65], [0, .35], [.35, .35]]
+};
+function curvyPath(kind, x, y, w, h) {
+  const X = v => +(x + v * w).toFixed(1), Y = v => +(y + v * h).toFixed(1);
+  if (kind === 'heart') return `M${X(.5)} ${Y(.95)}C${X(.1)} ${Y(.62)} ${X(0)} ${Y(.38)} ${X(0)} ${Y(.27)}C${X(0)} ${Y(.1)} ${X(.15)} ${Y(0)} ${X(.28)} ${Y(0)}C${X(.4)} ${Y(0)} ${X(.47)} ${Y(.08)} ${X(.5)} ${Y(.16)}C${X(.53)} ${Y(.08)} ${X(.6)} ${Y(0)} ${X(.72)} ${Y(0)}C${X(.85)} ${Y(0)} ${X(1)} ${Y(.1)} ${X(1)} ${Y(.27)}C${X(1)} ${Y(.38)} ${X(.9)} ${Y(.62)} ${X(.5)} ${Y(.95)}Z`;
+  if (kind === 'cloud') return `M${X(.25)} ${Y(.88)}C${X(.1)} ${Y(.88)} ${X(0)} ${Y(.77)} ${X(0)} ${Y(.62)}C${X(0)} ${Y(.48)} ${X(.09)} ${Y(.4)} ${X(.22)} ${Y(.37)}C${X(.23)} ${Y(.18)} ${X(.37)} ${Y(.04)} ${X(.53)} ${Y(.04)}C${X(.67)} ${Y(.04)} ${X(.78)} ${Y(.14)} ${X(.81)} ${Y(.29)}C${X(.93)} ${Y(.3)} ${X(1)} ${Y(.42)} ${X(1)} ${Y(.57)}C${X(1)} ${Y(.74)} ${X(.9)} ${Y(.88)} ${X(.75)} ${Y(.88)}Z`;
+  if (kind === 'bubble') { const r = Math.min(16, w / 5, h / 4), b = y + h * .8; return `M${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${b - r}Q${x + w} ${b} ${x + w - r} ${b}H${x + w * .42}L${x + w * .2} ${y + h}L${x + w * .26} ${b}H${x + r}Q${x} ${b} ${x} ${b - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`; }
+  if (kind === 'cyl') { const ry = Math.min(h * .16, 18), rx = w / 2; return `M${x} ${y + ry}A${rx} ${ry} 0 0 1 ${x + w} ${y + ry}V${y + h - ry}A${rx} ${ry} 0 0 1 ${x} ${y + h - ry}ZM${x} ${y + ry}A${rx} ${ry} 0 0 0 ${x + w} ${y + ry}`; }
+  return '';
+}
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const noteFill = c => (NOTE_COLORS.find(x => x[0] === c) || NOTE_COLORS[0])[1];
 const items = () => P.data?.items || [];
+const grpOf = set => { const gs = new Set(); for (const i of items()) if (set.has(i.id) && i.grp) gs.add(i.grp); if (!gs.size) return set; const out = new Set(set); for (const i of items()) if (i.grp && gs.has(i.grp)) out.add(i.id); return out; };
 const byId = id => items().find(i => i.id === id);
 
 // Yazıyı genişliğe göre satırlara böl (dışa aktarmada da aynı görünsün diye SVG <text> ile çiziliyor)
@@ -345,6 +411,7 @@ function bboxOf(it) {
   if (it.t === 'line') { const g = lineGeom(it); const xs = g.pts.map(p => p.x), ys = g.pts.map(p => p.y); const x = Math.min(...xs), y = Math.min(...ys); return { x, y, w: Math.max(1, Math.max(...xs) - x), h: Math.max(1, Math.max(...ys) - y) }; }
   if (it.t === 'text') return { x: it.x, y: it.y, w: it.w, h: textHeight(it) };
   if (it.t === 'table') { const L = tableLayout(it); return { x: it.x, y: it.y, w: L.W, h: L.H }; }
+  if (it.t === 'todo') return { x: it.x, y: it.y, w: it.w, h: todoLayout(it).H };
   return { x: it.x, y: it.y, w: it.w, h: it.h };
 }
 const textHeight = it => Math.max(it.fs * 1.28, wrapText(it.text || ' ', it.w, it.fs, it.bold ? 650 : 450).length * it.fs * 1.28);
@@ -371,6 +438,7 @@ function roughD(pts, closed, seed, amp = 1.6) {
   return d;
 }
 function shapePoints(kind, x, y, w, h) {
+  if (POLY[kind]) return POLY[kind]().map(([a, b]) => ({ x: x + a * w, y: y + b * h }));
   if (kind === 'ellipse' || kind === 'pill' || kind === 'round') {
     if (kind === 'ellipse') return Array.from({ length: 28 }, (_, i) => { const a = (i / 28) * Math.PI * 2; return { x: x + w / 2 + Math.cos(a) * w / 2, y: y + h / 2 + Math.sin(a) * h / 2 }; });
     const r = kind === 'pill' ? Math.min(w, h) / 2 : Math.min(18, w / 4, h / 4), pts = [];
@@ -448,11 +516,47 @@ function penPath(pts) {
   return d + ` L${pts[pts.length - 2]} ${pts[pts.length - 1]}`;
 }
 function shapePath(kind, x, y, w, h) {
+  if (POLY[kind]) return `<path d="M${POLY[kind]().map(([a, b]) => `${+(x + a * w).toFixed(1)} ${+(y + b * h).toFixed(1)}`).join('L')}Z" stroke-linejoin="round"`;
+  if (/^(heart|cloud|bubble|cyl)$/.test(kind)) return `<path d="${curvyPath(kind, x, y, w, h)}" stroke-linejoin="round"`;
   if (kind === 'ellipse') return `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}"`;
   if (kind === 'diamond') return `<path d="M${x + w / 2} ${y}L${x + w} ${y + h / 2}L${x + w / 2} ${y + h}L${x} ${y + h / 2}Z"`;
   if (kind === 'tri') return `<path d="M${x + w / 2} ${y}L${x + w} ${y + h}L${x} ${y + h}Z"`;
   const r = kind === 'round' ? Math.min(18, w / 4, h / 4) : kind === 'pill' ? Math.min(w, h) / 2 : 2;
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"`;
+}
+
+/* ───────── Yapılacaklar kartı ───────── */
+function todoLayout(it) {
+  const tl = wrapText(it.title || 'Yapılacaklar', it.w - 90, 17, 650).slice(0, 2), barY = 20 + tl.length * 21.8 + 8;
+  let y = barY + 20; const rows = [];
+  for (const r of it.rows) { const lines = wrapText(r.t || ' ', it.w - 64, 15, 450), h = Math.max(30, lines.length * 19.2 + 12); rows.push({ y, h, lines }); y += h; }
+  return { tl, barY, rows, H: Math.max(y + 12, 120) };
+}
+function pTodoParse(txt, it) {
+  const ls = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean), title = (ls.shift() || 'Yapılacaklar').slice(0, 80);
+  it.title = title; it.rows = ls.slice(0, 60).map(l => { const m = l.match(/^\[(x|X| )?\]\s*(.*)$/); return m ? { t: m[2].slice(0, 200), d: /x/i.test(m[1] || '') } : { t: l.replace(/^[-*•]\s*/, '').slice(0, 200), d: false }; }).filter(r => r.t);
+}
+function pTodoEdit(it) {
+  if (!it) return;
+  const txt = [it.title, ...it.rows.map(r => `${r.d ? '[x]' : '[ ]'} ${r.t}`)].join('\n');
+  $('#modal').innerHTML = `<div class="modal-bg"><div class="sheet nask"><header class="sheet-head"><button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button><h3>Yapılacaklar listesi</h3></header>
+    <form class="set-body" id="pTdForm"><p class="muted sm" style="margin:0 0 8px">İlk satır başlık, sonrakiler birer madde. Biten maddenin başına <b>[x]</b> yaz; kutucuğa kartın üstünden de dokunabilirsin.</p>
+    <textarea id="pTdIn" rows="9" maxlength="6000" style="width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg)">${esc(txt)}</textarea>
+    <div class="sticky-actions"><button type="button" class="btn" data-action="close-modal">Vazgeç</button><button class="btn primary">Kaydet</button></div></form></div></div>`;
+  $('#pTdForm').addEventListener('submit', e => { e.preventDefault(); pSnap(); pTodoParse($('#pTdIn').value, it); closeModal(); pChanged(); pRender(); });
+  setTimeout(() => { const t = $('#pTdIn'); t?.focus(); t?.setSelectionRange(t.value.length, t.value.length); }, 60);
+}
+function pTodoYeni() {
+  const c = pCenter(), it = { id: uid(), t: 'todo', x: r1(c.x - 140), y: r1(c.y - 100), w: 280, title: 'Yapılacaklar', accent: '#2f9e47', rows: [{ t: 'Birinci iş', d: false }, { t: 'İkinci iş', d: false }, { t: 'Üçüncü iş', d: false }] };
+  pPlace([it]); setTimeout(() => pTodoEdit(it), 50);
+}
+/* ───────── Panoda ara ───────── */
+async function pAra() {
+  const q = await pAsk('Panoda ara', 'Aranacak yazı', '', 'Ara'); if (!q) return;
+  const k = q.toLocaleLowerCase('tr'), bul = [];
+  for (const i of items()) { const m = [i.text, i.title, i.label, i.snippet, ...(i.rows || []).map(r => r.t), ...(i.cells || []).flat(), ...(i.comments || []).map(c => c.text)].filter(Boolean).join(' ').toLocaleLowerCase('tr'); if (m.includes(k)) bul.push(i.id); }
+  if (!bul.length) return toast('Panoda bulunamadı');
+  P.sel = new Set(bul); pSetTool('select'); pFit(true, P.sel); toast(`${bul.length} sonuç bulundu`);
 }
 
 /* ───────── Tablo yerleşimi ───────── */
@@ -469,8 +573,18 @@ function badges(it) {
   const b = bboxOf(it); let h = '';
   if (it.votes) h += `<g class="pbadge"><circle cx="${b.x}" cy="${b.y}" r="13" fill="#e5484d"/><text x="${b.x}" y="${b.y + 4.5}" font-family='${FONT}' font-size="13" font-weight="700" fill="#fff" text-anchor="middle">${it.votes}</text></g>`;
   if (it.comments?.length) h += `<g class="pbadge" data-cm="${it.id}"><path d="M${b.x + b.w - 14} ${b.y - 12}h24a5 5 0 0 1 5 5v12a5 5 0 0 1-5 5h-14l-7 6v-6h-3a5 5 0 0 1-5-5v-12a5 5 0 0 1 5-5z" fill="#2f7de1"/><text x="${b.x + b.w + 3}" y="${b.y + 5}" font-family='${FONT}' font-size="12" font-weight="700" fill="#fff" text-anchor="middle">${it.comments.length}</text></g>`;
+  if (it.locked) h += `<g class="pbadge"><circle cx="${b.x + b.w}" cy="${b.y}" r="11" fill="#3b3f46"/><rect x="${b.x + b.w - 5}" y="${b.y - 1}" width="10" height="7" rx="1.5" fill="#fff"/><path d="M${b.x + b.w - 3} ${b.y - 1}v-2.5a3 3 0 0 1 6 0v2.5" fill="none" stroke="#fff" stroke-width="1.6"/></g>`;
   if (it.cal) h += `<text x="${b.x + b.w - 6}" y="${b.y + b.h - 6}" font-size="16" text-anchor="end">📅</text>`;
   return h;
+}
+const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f).toString(16).padStart(2, '0')).join(''); };
+function noteBody(it, forExport) {
+  const x = it.x, y = it.y, w = it.w, h = it.h, c = noteFill(it.color), sh = forExport ? '' : 'filter="url(#pshadow)"';
+  if (w < 110 || h < 110) return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${c}" ${sh}/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#pgloss)" pointer-events="none"/>`;
+  const F = Math.min(26, Math.round(Math.min(w, h) * .13));   // kıvrık köşe
+  const d = `M${x + 5} ${y}H${x + w - 5}Q${x + w} ${y} ${x + w} ${y + 5}V${y + h - F}L${x + w - F} ${y + h}H${x + 5}Q${x} ${y + h} ${x} ${y + h - 5}V${y + 5}Q${x} ${y} ${x + 5} ${y}Z`;
+  return `<path d="${d}" fill="${c}" ${sh}/><path d="${d}" fill="url(#pgloss)" pointer-events="none"/>
+    <path d="M${x + w} ${y + h - F}L${x + w - F} ${y + h}L${x + w - F} ${y + h - F}Z" fill="${shade(c, .86)}"/><path d="M${x + w} ${y + h - F}L${x + w - F} ${y + h - F}L${x + w - F} ${y + h}" fill="none" stroke="rgba(0,0,0,.12)" stroke-width=".8"/>`;
 }
 function itemSvg(it, forExport) {
   const hide = !forExport && P.editing?.id === it.id;
@@ -480,7 +594,7 @@ function itemSvg(it, forExport) {
   if (it.t === 'note') {
     const { fs, lines } = fitFont(it);
     return `<g data-id="${it.id}" class="pi pi-note">${sk ? `<path d="${roughD(shapePoints('rect', it.x, it.y, it.w, it.h), true, it.id, 1.2)}" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" fill="${noteFill(it.color)}"/>`
-      : `<rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" rx="4" fill="${noteFill(it.color)}" ${forExport ? '' : 'filter="url(#pshadow)"'}/>`}
+      : noteBody(it, forExport)}
       ${hide ? '' : T(lines, it.x + it.w / 2, it.y + it.h / 2, fs, '#1b1d21', it.align === 'left' ? 'start' : 'middle', it.x + 16, it.bold ? 650 : 450)}${bd}</g>`;
   }
   if (it.t === 'text') {
@@ -527,6 +641,22 @@ function itemSvg(it, forExport) {
     }
     return `<g data-id="${it.id}" class="pi pi-frame"><rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" rx="8" fill="${it.fill || '#ffffff'}" stroke="#e1e4e8" stroke-width="1" ${forExport ? '' : 'filter="url(#pfshadow)"'}/>
       ${hide ? '' : `<text x="${it.x + 4}" y="${it.y - 10}" font-family='${F}' font-size="14" font-weight="600" fill="#6b717a" class="pf-title">${esc(it.title || 'Çerçeve')}</text>`}${bd}</g>`;
+  }
+  if (it.t === 'todo') {
+    const L = todoLayout(it), acc = it.accent || '#2f9e47', done = it.rows.filter(r => r.d).length, tot = it.rows.length, fw = it.w - 32;
+    let h = `<clipPath id="ptc-${it.id}"><rect x="${it.x}" y="${it.y}" width="${it.w}" height="${L.H}" rx="14"/></clipPath><rect x="${it.x}" y="${it.y}" width="${it.w}" height="${L.H}" rx="14" fill="#ffffff" stroke="#dfe3e8" stroke-width="1.2" ${forExport ? '' : 'filter="url(#pshadow)"'}/>
+      <rect x="${it.x}" y="${it.y}" width="${it.w}" height="7" fill="${acc}" clip-path="url(#ptc-${it.id})"/>`;
+    if (!hide) h += T(L.tl, 0, it.y + 20, 17, '#1b1d21', 'start', it.x + 16, 650, 'top');
+    h += `<text x="${it.x + it.w - 16}" y="${it.y + 33}" font-family='${F}' font-size="13" font-weight="600" fill="#8a919a" text-anchor="end">${done}/${tot}</text>`;
+    h += `<rect x="${it.x + 16}" y="${it.y + L.barY}" width="${fw}" height="6" rx="3" fill="#eceef1"/>${tot ? `<rect x="${it.x + 16}" y="${it.y + L.barY}" width="${Math.max(6, fw * done / tot)}" height="6" rx="3" fill="${acc}" ${done ? '' : 'opacity="0"'}/>` : ''}`;
+    it.rows.forEach((r, i) => {
+      const R_ = L.rows[i], y0 = it.y + R_.y, cx = it.x + 16, cy = y0 + 4;
+      h += `<g data-todo="${it.id}|${i}" class="ptodo"><rect x="${it.x + 6}" y="${y0 - 2}" width="38" height="${R_.h}" fill="transparent"/>
+        <rect x="${cx}" y="${cy}" width="20" height="20" rx="6" fill="${r.d ? acc : '#fff'}" stroke="${r.d ? acc : '#b9bfc7'}" stroke-width="1.6"/>${r.d ? `<path d="m${cx + 5} ${cy + 10.5} 3.6 3.6 6.6-7.4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</g>`;
+      h += T(R_.lines, 0, y0 + 4, 15, r.d ? '#9aa1ab' : '#1b1d21', 'start', it.x + 48, 450, 'top');
+      if (r.d) R_.lines.forEach((l, j) => { measureCtx.font = `450 15px ${F}`; const lw = measureCtx.measureText(l).width; h += `<line x1="${it.x + 48}" x2="${it.x + 48 + lw}" y1="${y0 + 4 + j * 19.2 + 11}" y2="${y0 + 4 + j * 19.2 + 11}" stroke="#9aa1ab" stroke-width="1.4"/>`; });
+    });
+    return `<g data-id="${it.id}" class="pi pi-todo">${h}${bd}</g>`;
   }
   if (it.t === 'emoji') return `<g data-id="${it.id}" class="pi pi-emoji"><rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" fill="transparent"/><text x="${it.x + it.w / 2}" y="${it.y + it.h * 0.84}" font-size="${it.h * 0.86}" text-anchor="middle" font-family='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'>${esc(it.ch)}</text>${bd}</g>`;
   if (it.t === 'icon') {
@@ -589,7 +719,7 @@ async function pOpen(id) {
   pStatus('Açılıyor…');
   try {
     let data = await PDB.get(id);
-    const local = store.get('panoLocal:' + id);
+    const local = YEREL ? null : store.get('panoLocal:' + id);
     if (local?.dirty && local.at > (meta.modified || 0)) { data = local.data; P.dirty = true; }   // çevrimdışı yapılmış değişiklik
     P.data = pNormalize(data);
     if (P.board?.id !== id) return;
@@ -607,6 +737,7 @@ async function pOpen(id) {
 function pNormalize(d) {
   d = d && typeof d === 'object' ? d : {};
   d.v = 1; d.items = Array.isArray(d.items) ? d.items.filter(i => i && i.id && i.t) : [];
+  for (const i of d.items) if (i.t === 'todo') { i.rows = Array.isArray(i.rows) ? i.rows.filter(r => r && typeof r.t === 'string').slice(0, 60).map(r => ({ t: r.t.slice(0, 200), d: !!r.d })) : []; i.w = Math.min(800, Math.max(200, +i.w || 280)); }
   return d;
 }
 // Araç simgeleri: renkli, Miro/FigJam gibi
@@ -701,12 +832,35 @@ async function pRename(t) {
 /* ───────── Görünüm (kaydırma, yakınlaştırma) ───────── */
 const stageRect = () => $('#pSvg').getBoundingClientRect();
 function toWorld(cx, cy) { const r = stageRect(); return { x: (cx - r.left - P.V.x) / P.V.z, y: (cy - r.top - P.V.y) / P.V.z }; }
+const BG_TINTS = [['#f3f4f6', 'Gri'], ['#ffffff', 'Beyaz'], ['#fbf5e6', 'Krem'], ['#eaf6ee', 'Nane'], ['#e9f2fb', 'Gök'], ['#f1edfb', 'Lavanta'], ['#fcedf1', 'Pembe']];
+const BG_STILLER = [['dot', 'Noktalı'], ['grid', 'Kareli'], ['line', 'Çizgili'], ['none', 'Düz']];
+function bgOf() { const b = P.data?.bg || {}; return { s: b.s || (P.grid ? 'dot' : 'none'), c: /^#[0-9a-f]{6}$/i.test(b.c || '') ? b.c : '#f3f4f6' }; }
+function bgDot(c) { const n = parseInt(c.slice(1), 16), f = .82; return `rgb(${Math.round((n >> 16) * f)},${Math.round(((n >> 8) & 255) * f)},${Math.round((n & 255) * f)})`; }
+function pApplyBg() {
+  const st = $('#pStage'); if (!st) return;
+  const { s, c } = bgOf(), d = bgDot(c), g = 24 * P.V.z, g5 = g * 1;
+  st.style.setProperty('--pano-bg', c); st.style.backgroundColor = c;
+  const kare = `${g}px ${g}px`;
+  if (s === 'dot') { st.style.backgroundImage = `radial-gradient(circle, ${d} ${Math.max(1, 1.1 * Math.min(1.6, P.V.z))}px, transparent ${Math.max(1.25, 1.35 * Math.min(1.6, P.V.z))}px)`; st.style.backgroundSize = kare; }
+  else if (s === 'grid') { st.style.backgroundImage = `linear-gradient(${d} 1px, transparent 1px), linear-gradient(90deg, ${d} 1px, transparent 1px)`; st.style.backgroundSize = `${kare}, ${kare}`; }
+  else if (s === 'line') { st.style.backgroundImage = `linear-gradient(to bottom, transparent calc(100% - 1px), ${d} 0)`; st.style.backgroundSize = `100% ${g * 1.5}px`; }
+  else { st.style.backgroundImage = 'none'; }
+  st.style.backgroundPosition = `${P.V.x}px ${P.V.y}px`;
+}
+function pZeminMenu(btn) {
+  const b = bgOf();
+  pPop(btn, `<div class="ctx-title">Zemin deseni</div><div class="pbgs">${BG_STILLER.map(([k, n]) => `<button type="button" class="pbg ${b.s === k ? 'on' : ''}" data-v="s:${k}" data-keep="1"><i class="pbg-${k}"></i><span>${n}</span></button>`).join('')}</div>
+    <div class="ctx-title">Zemin rengi</div><div class="pswatches">${BG_TINTS.map(([c, n]) => `<button type="button" class="psw ${b.c === c ? 'on' : ''}" data-v="c:${c}" data-keep="1" style="--c:${c}" title="${n}"></button>`).join('')}</div>`, (v, el) => {
+    pSnap(); P.data.bg = { ...bgOf() }; const [k, val] = v.split(':'); P.data.bg[k] = val; pApplyBg(); pChanged();
+    el.closest('.ppop').querySelectorAll(k === 's' ? '.pbg' : '.psw').forEach(x => x.classList.toggle('on', x === el));
+  });
+}
 function pApplyView() {
   const t = `translate(${P.V.x} ${P.V.y}) scale(${P.V.z})`;
   $('#pWorld')?.setAttribute('transform', t);
   $('#pOver')?.setAttribute('transform', t);
   const st = $('#pStage');
-  if (st) { const g = 24 * P.V.z; st.style.backgroundSize = `${g}px ${g}px`; st.style.backgroundPosition = `${P.V.x}px ${P.V.y}px`; }
+  pApplyBg();
   const zl = $('#pZoomL'); if (zl) zl.textContent = Math.round(P.V.z * 100) + '%';
   pPlaceEditor(); pCtxBar(); pViewSaveSoon(); pMiniSoon();
 }
@@ -735,7 +889,8 @@ let pViewT = 0;
 function pViewSaveSoon() { if (!P.data) return; clearTimeout(pViewT); pViewT = setTimeout(() => { if (P.data) { P.data.view = { ...P.V }; pLocalSave(false); } }, 800); }
 
 /* ───────── Çizim ───────── */
-const SHADOW = '<filter id="pshadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation=".6" flood-color="#1b1d21" flood-opacity=".10"/><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#1b1d21" flood-opacity=".10"/></filter>'
+const GLOSS = '<linearGradient id="pgloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".06"/></linearGradient>';
+const SHADOW = GLOSS + '<filter id="pshadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation=".6" flood-color="#1b1d21" flood-opacity=".10"/><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#1b1d21" flood-opacity=".10"/></filter>'
   + '<filter id="pfshadow" x="-5%" y="-5%" width="110%" height="115%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#1b1d21" flood-opacity=".07"/></filter>'
   + '<filter id="phs" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".25"/></filter>';
 function pRender() {
@@ -745,6 +900,8 @@ function pRender() {
   const list = drawOrder(items());
   world.innerHTML = list.map(i => itemSvg(i)).join('') + (P.draft ? itemSvg(P.draft) : '');
   $('#pEmpty').hidden = !!items().length || !!P.draft;
+  if (P.seenFor === P.data && P.seen) { for (const g of world.querySelectorAll('.pi[data-id]')) if (!P.seen.has(g.dataset.id) && !P.draft) g.classList.add('pi-new'); }
+  P.seenFor = P.data; P.seen = new Set(list.map(i => i.id));
   pApplyView(); pRenderOverlay(); pMiniSoon();
 }
 function pRenderOverlay() {
@@ -791,7 +948,7 @@ function pAfterHist() { for (const id of [...P.sel]) if (!byId(id)) P.sel.delete
 function pHistBtns() { const u = $('#pUndo'), r = $('#pRedo'); if (u) u.disabled = !P.hist.length; if (r) r.disabled = !P.fut.length; }
 function pChanged(noHistBtns) { P.dirty = true; pStatus('Kaydedilmedi'); pLocalSave(true); pSaveSoon(); if (!noHistBtns) pHistBtns(); }
 function pLocalSave(dirty) {
-  if (!P.board || !P.data) return;
+  if (YEREL || !P.board || !P.data) return;
   try { store.set('panoLocal:' + P.board.id, { at: Date.now(), dirty: dirty || P.dirty, data: P.data }); }
   catch { /* cihaz deposu doluysa (büyük resimler) sadece Drive'a kaydedilir */ }
 }
@@ -806,14 +963,14 @@ async function pSave() {
     const mod = await PDB.save(id, title, P.data);
     const m = P.boards.find(b => b.id === id); if (m) { m.modified = mod; m.title = title; }
     if (P.board?.id === id) { P.board.modified = mod; if (!P.dirty) pStatus('Kaydedildi'); }
-    try { store.set('panoLocal:' + id, { at: Date.now(), dirty: false, data: P.data }); } catch {}
+    if (!YEREL) { try { store.set('panoLocal:' + id, { at: Date.now(), dirty: false, data: P.data }); } catch {} }
     pThumbSoon();
   } catch (e) {
     P.dirty = true;
     if (e instanceof AuthError) { P.saving = false; return; }
-    const off = e instanceof TypeError || !navigator.onLine;
+    const off = !YEREL && (e instanceof TypeError || !navigator.onLine);
     pStatus(off ? 'Çevrimdışı · bu cihazda saklandı' : 'Kaydedilemedi');
-    if (!off) toast('Pano kaydedilemedi: ' + e.message);
+    if (!off) toast(YEREL ? 'Pano kaydedilemedi: cihazın depolama alanı dolmuş olabilir. Büyük resimleri silmeyi dene.' : 'Pano kaydedilemedi: ' + e.message);
     pSaveSoon(off ? 15000 : 6000);
   }
   P.saving = false;
@@ -900,6 +1057,8 @@ function pDown(e) {
   const w = toWorld(e.clientX, e.clientY);
   const h = e.target.closest?.('[data-h]')?.dataset.h;
   const it = targetItem(e);
+  const td = e.target.closest?.('[data-todo]');
+  if (td && P.tool === 'select' && !spaceDown) { const [tid, ri] = td.dataset.todo.split('|'), o = byId(tid); if (o && !o.locked && o.rows[+ri]) { PT.delete(e.pointerId); pSnap(); o.rows[+ri].d = !o.rows[+ri].d; pChanged(); pRender(); return; } }
   const cm = e.target.closest?.('[data-cm]');
   if (cm && P.tool === 'select') { PT.delete(e.pointerId); return pComments(byId(cm.dataset.cm)); }
   if (P.voting && it && P.tool === 'select' && it.t !== 'line' && it.t !== 'frame') {
@@ -918,12 +1077,14 @@ function pDown(e) {
   if (tool === 'select') {
     if (h === 'link') { const src = byId([...P.sel][0]); return pLineStart(w, src); }
     if (h === 'a' || h === 'b') { pSnap(); P.drag = { mode: 'end', id: [...P.sel][0], which: h, snapped: true }; return; }
+    if (h && byId([...P.sel][0])?.locked) return;
     if (h) { const o = byId([...P.sel][0]); pSnap(); P.drag = { mode: 'resize', id: o.id, h, start: w, orig: JSON.parse(JSON.stringify(o)), box: bboxOf(o), snapped: true }; return; }
     if (it) {
-      if (e.shiftKey) { P.sel.has(it.id) ? P.sel.delete(it.id) : P.sel.add(it.id); pRenderOverlay(); if (!P.sel.has(it.id)) return; }
-      else if (!P.sel.has(it.id)) { P.sel.clear(); P.sel.add(it.id); }
-      // Taşınacaklar: seçilenler + seçili çerçevelerin içindekiler
-      const ids = new Set(P.sel);
+      if (e.shiftKey) { const kume = grpOf(new Set([it.id])); if (P.sel.has(it.id)) kume.forEach(k => P.sel.delete(k)); else kume.forEach(k => P.sel.add(k)); pRenderOverlay(); if (!P.sel.has(it.id)) return; }
+      else if (!P.sel.has(it.id)) { P.sel = grpOf(new Set([it.id])); }
+      // Taşınacaklar: seçilenler + seçili çerçevelerin içindekiler (kilitliler yerinde kalır)
+      const ids = new Set([...P.sel].filter(k => !byId(k)?.locked));
+      if (!ids.size) { pRenderOverlay(); return; }
       for (const f of items().filter(i => P.sel.has(i.id) && i.t === 'frame')) for (const o of items()) if (o.t !== 'frame' && o.t !== 'line' && inside(bboxOf(o), f)) ids.add(o.id);
       P.drag = { mode: 'move', start: w, ids, orig: new Map(items().filter(i => ids.has(i.id)).map(i => [i.id, JSON.parse(JSON.stringify(i))])), moved: false, alt: e.altKey };
       pRenderOverlay();
@@ -1065,7 +1226,7 @@ function pUp(e) {
   $('#pStage')?.classList.remove('panning');
   const w = toWorld(e.clientX, e.clientY);
   if (d.mode === 'pan' && d.tap && P.tool === 'select') { P.sel.clear(); pRenderOverlay(); }
-  if (d.mode === 'marq') { P.marq = null; pRenderOverlay(); }
+  if (d.mode === 'marq') { P.marq = null; P.sel = grpOf(P.sel); pRenderOverlay(); }
   if (d.mode === 'move') { P.guides = null; if (d.moved) pChanged(); pRenderOverlay(); }
   if (d.mode === 'resize' || d.mode === 'end' || d.mode === 'erase') { if (d.snapped) pChanged(); pRender(); }
   if (d.mode === 'pen') {
@@ -1102,6 +1263,8 @@ function pDbl(e) {
   for (const el of document.elementsFromPoint(e.clientX, e.clientY)) { const g = el.closest?.('#pWorld [data-id]'); if (g) { it = byId(g.dataset.id); break; } }
   if (it) {
     if (it.t === 'frame') return pFrameRename(it);
+    if (it.locked) return toast('Kilitli: düzenlemek için önce kilidini aç');
+    if (it.t === 'todo') return pTodoEdit(it);
     if (/^(note|text|shape|line|link)$/.test(it.t)) { pSnap(); return pEditStart(it, false); }
     if (it.t === 'table') { const w0 = toWorld(e.clientX, e.clientY), L = tableLayout(it); const c = Math.max(0, L.colX.findIndex(x => x > w0.x - it.x) - 1), r = Math.max(0, L.rowY.findIndex(y => y > w0.y - it.y) - 1); pSnap(); return pEditStart(it, false, [Math.min(r, it.cells.length - 1), Math.min(c, it.cols.length - 1)]); }
     if (it.t === 'mail' && it.threadId) return window.open('https://mail.google.com/mail/u/0/#all/' + encodeURIComponent(it.threadId), '_blank', 'noopener');
@@ -1178,6 +1341,7 @@ function pNextNote(it, dir) {
 
 /* ═════════ Seçim işlemleri ═════════ */
 function pRemove(ids, silent) {
+  const kilit = ids.filter(id => byId(id)?.locked); if (kilit.length) { ids = ids.filter(id => !byId(id)?.locked); if (!silent) toast(kilit.length === 1 ? 'Kilitli öğe silinmez; önce kilidini aç' : 'Kilitli öğeler silinmedi'); if (!ids.length) return; }
   const set = new Set(ids);
   if (!silent) pSnap();
   P.data.items = items().filter(i => !set.has(i.id) && !(i.t === 'line' && ((i.a.id && set.has(i.a.id)) || (i.b.id && set.has(i.b.id)))));
@@ -1191,7 +1355,7 @@ function pCopyItems(ids) {
 }
 function pPaste(list, at) {
   if (!list?.length) return;
-  const map = new Map(); const copies = list.map(o => { const c = JSON.parse(JSON.stringify(o)); c.id = uid(); map.set(o.id, c.id); return c; });
+  const map = new Map(), gmap = new Map(); const copies = list.map(o => { const c = JSON.parse(JSON.stringify(o)); c.id = uid(); map.set(o.id, c.id); if (c.grp) { if (!gmap.has(c.grp)) gmap.set(c.grp, 'g' + uid()); c.grp = gmap.get(c.grp); } delete c.locked; return c; });
   const b = unionBox(copies.map(c => { if (c.t !== 'line') return bboxOf(c); const p = c.a.id ? endPoint(c.a) : c.a, q = c.b.id ? endPoint(c.b) : c.b; return { x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), w: Math.abs(p.x - q.x) || 1, h: Math.abs(p.y - q.y) || 1 }; }));
   const dx = at ? at.x - (b.x + b.w / 2) : 24, dy = at ? at.y - (b.y + b.h / 2) : 24;
   for (const c of copies) {
@@ -1234,9 +1398,13 @@ function pCtxBar() {
   if (one('table') && sel.length === 1) h += `<button type="button" class="pc-btn txt" data-pc="trow" title="Satır ekle">+ Satır</button><button type="button" class="pc-btn txt" data-pc="tcol" title="Sütun ekle">+ Sütun</button><button type="button" class="pc-btn txt" data-pc="tdel" title="Son satırı ya da sütunu sil">−</button><button type="button" class="pc-btn txt ${first.header ? 'on' : ''}" data-pc="thead" title="Başlık satırı">Başlık</button>`;
   if (sel.length === 1 && (first.t === 'link' || first.t === 'mail' || first.ref)) h += `<button type="button" class="pc-btn" data-pc="open" title="${first.t === 'link' ? 'Bağlantıyı aç' : first.t === 'mail' ? "Gmail'de aç" : "Notlar'da aç"}">${IC.open}</button>`;
   if (sel.length > 1 && sel.filter(i => i.t !== 'line').length > 1) h += `<button type="button" class="pc-btn" data-pc="arrange" title="Hizala ve dağıt">${IC.align}</button>`;
-  if (sel.some(i => i.t === 'note')) h += `<button type="button" class="pc-btn" data-pc="tocal" title="Takvim'e ekle">${IC.cal}</button>`;
-  if (sel.some(i => /^(note|text|shape)$/.test(i.t) && (i.text || '').trim())) h += `<button type="button" class="pc-btn" data-pc="tonote" title="Notlar'a gönder">${IC.noteI}</button>`;
+  if (!YEREL && sel.some(i => i.t === 'note')) h += `<button type="button" class="pc-btn" data-pc="tocal" title="Takvim'e ekle">${IC.cal}</button>`;
+  if (!YEREL && sel.some(i => /^(note|text|shape)$/.test(i.t) && (i.text || '').trim())) h += `<button type="button" class="pc-btn" data-pc="tonote" title="Notlar'a gönder">${IC.noteI}</button>`;
   if (sel.length === 1 && first.t !== 'line') h += `<button type="button" class="pc-btn ${first.comments?.length ? 'on' : ''}" data-pc="cmt" title="Yorumlar">${IC.comment}</button>`;
+  if (one('todo')) h += `<button type="button" class="pc-btn txt" data-pc="todoedit" title="Maddeleri düzenle">Düzenle</button><button type="button" class="pc-btn" data-pc="pal" data-k="accent" title="Renk"><i class="pc-dot" style="--c:${first.accent || '#2f9e47'}"></i></button>`;
+  const gruplu = sel.some(i => i.grp);
+  if (sel.length > 1 || gruplu) h += `<button type="button" class="pc-btn txt ${gruplu ? 'on' : ''}" data-pc="grup" title="${gruplu ? 'Grubu çöz (Ctrl+Shift+G)' : 'Grupla (Ctrl+G)'}">${gruplu ? 'Grubu çöz' : 'Grupla'}</button>`;
+  h += `<button type="button" class="pc-btn ${sel.every(i => i.locked) ? 'on' : ''}" data-pc="kilit" title="${sel.every(i => i.locked) ? 'Kilidi aç' : 'Kilitle'}">${IC.lock}</button>`;
   if (h) h += '<span class="pc-sep"></span>';
   h += `<button type="button" class="pc-btn" data-pc="front" title="Öne getir">${IC.front}</button><button type="button" class="pc-btn" data-pc="back" title="Arkaya gönder">${IC.back2}</button>
     <button type="button" class="pc-btn" data-pc="dup" title="Çoğalt (Ctrl+D)">${IC.copy}</button><button type="button" class="pc-btn danger" data-pc="del" title="Sil (Delete)">${IC.trash}</button>`;
@@ -1255,9 +1423,22 @@ function pCtxBar() {
   bar.onclick = e => { const btn = e.target.closest('[data-pc]'); if (btn) pCtxAct(btn.dataset.pc, btn); };
   bar.onpointerdown = e => e.stopPropagation();
 }
+function pGrupla() {
+  const sel = items().filter(i => P.sel.has(i.id)); if (!sel.length) return;
+  if (sel.some(i => i.grp)) { pSnap(); const gs = new Set(sel.map(i => i.grp).filter(Boolean)); for (const i of items()) if (gs.has(i.grp)) delete i.grp; pChanged(); pRender(); return toast('Grup çözüldü'); }
+  if (sel.length < 2) return toast('Gruplamak için iki ya da daha fazla öğe seç');
+  pSnap(); const g = 'g' + uid(); sel.forEach(i => { i.grp = g; }); pChanged(); pRender(); toast('Gruplandı · birlikte taşınır');
+}
+function pKilitle() {
+  const sel = items().filter(i => P.sel.has(i.id)); if (!sel.length) return;
+  pSnap(); const ac = sel.every(i => i.locked); sel.forEach(i => { if (ac) delete i.locked; else i.locked = true; }); pChanged(); pRender(); toast(ac ? 'Kilit açıldı' : 'Kilitlendi · taşınmaz ve silinmez');
+}
 function pCtxAct(a, btn) {
   const sel = items().filter(i => P.sel.has(i.id)); if (!sel.length) return;
   const first = sel[0];
+  if (a === 'grup') return pGrupla();
+  if (a === 'kilit') return pKilitle();
+  if (a === 'todoedit') return pTodoEdit(first);
   if (a === 'pal') {
     const k = btn.dataset.k;
     const TINTS = ['#ffffff', '#eef4ff', '#effaf0', '#fff8e1', '#fdeef3', '#f3f0fb', '#fff1e6', '#f1f3f5'];
@@ -1312,6 +1493,9 @@ document.addEventListener('keydown', e => {
   if (ctrl && k === 'z') { e.preventDefault(); return e.shiftKey ? pRedo() : pUndo(); }
   if (ctrl && k === 'y') { e.preventDefault(); return pRedo(); }
   if (ctrl && k === 'a') { e.preventDefault(); pSetTool('select'); P.sel = new Set(items().map(i => i.id)); return pRenderOverlay(); }
+  if (ctrl && k === 'g') { e.preventDefault(); return pGrupla(); }
+  if (ctrl && k === 'l') { e.preventDefault(); return pKilitle(); }
+  if (ctrl && k === 'f') { e.preventDefault(); return pAra(); }
   if (ctrl && k === 'd') { e.preventDefault(); return pPaste(pCopyItems([...P.sel])); }
   if (ctrl && k === 's') { e.preventDefault(); P.dirty = true; return pSave(); }
   if (ctrl && (k === '=' || k === '+')) { e.preventDefault(); return pZoomAt(P.V.z * 1.2); }
@@ -1408,7 +1592,7 @@ function pExportSvg(ids, pad = 40) {
   const x = b.x - pad, y = b.y - pad, w = b.w + pad * 2, h = b.h + pad * 2;
   const cols = list.filter(i => i.t === 'line').map(i => i.color || '#1b1d21');
   const body = drawOrder(list).map(i => itemSvg(i, true)).join('').replace(/fill:var\(--pano-bg,#fff\)/g, 'fill:#ffffff');
-  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}"><defs>${markerDefs('pex', cols.length ? cols : ['#1b1d21'])}</defs><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff"/>${body}</svg>`, w, h };
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}"><defs>${GLOSS}${markerDefs('pex', cols.length ? cols : ['#1b1d21'])}</defs><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff"/>${body}</svg>`, w, h };
 }
 function pRaster(ids, maxSide = 4000, type = 'image/png', q = 0.92) {
   const ex = pExportSvg(ids); if (!ex) return Promise.resolve(null);
@@ -1514,6 +1698,41 @@ const PTPL = [
     const it = [];
     q.forEach(([t, c], i) => { const x = (i % 2) * 520, y = Math.floor(i / 2) * 440; it.push(F_(x, y, 490, 400, t, '#ffffff')); it.push(N_(x + 25, y + 25, '', c, 180, 160)); });
     return { v: 1, items: it };
+  } },
+  { id: 'eisen', name: 'Eisenhower matrisi', desc: 'Acil / Önemli önceliklendirme', make: () => {
+    const q = [['Yap · Acil + Önemli', 'yesil'], ['Planla · Önemli, acil değil', 'mavi'], ['Devret · Acil, önemli değil', 'sari'], ['Ele · Ne acil ne önemli', 'pembe']];
+    const it = [T_(0, -90, 'Öncelik matrisi', 30, 700)];
+    q.forEach(([t, c], i) => { const x = (i % 2) * 520, y = Math.floor(i / 2) * 440; it.push(F_(x, y, 490, 400, t, '#ffffff')); it.push(N_(x + 25, y + 25, '', c, 180, 160)); });
+    return { v: 1, items: it };
+  } },
+  { id: 'road', name: 'Yol haritası', desc: 'Şimdi · Sonraki · Sonra', make: () => {
+    const cols = [['Şimdi', 'yesil'], ['Sonraki', 'mavi'], ['Sonra', 'mor'], ['İleride', 'gri']];
+    const it = [T_(0, -90, 'Yol haritası', 30, 700)];
+    cols.forEach(([t, c], i) => { it.push(F_(i * 300, 0, 270, 620, t, '#ffffff')); for (let j = 0; j < 2; j++) it.push(N_(i * 300 + 25, 25 + j * 150, '', c, 220, 135)); });
+    return { v: 1, items: it };
+  } },
+  { id: 'org', name: 'Org şeması', desc: 'Ekip / hiyerarşi', make: () => {
+    const top = S_(-90, 0, 180, 70, 'round', 'Yönetici', '#cbe3ff', { bold: true });
+    const it = [top]; const kids = ['Ekip 1', 'Ekip 2', 'Ekip 3'];
+    kids.forEach((k, i) => { const x = (i - 1) * 240; const n = S_(x - 80, 200, 160, 64, 'round', k, '#ffffff'); it.push(n); it.push(L_(top, n, '', { endB: 'none', width: 2 })); });
+    return { v: 1, items: it };
+  } },
+  { id: 'meet', name: 'Toplantı notu', desc: 'Gündem · Notlar · Kararlar · Aksiyonlar', make: () => {
+    const it = [T_(0, -90, 'Toplantı — ' + new Date().toLocaleDateString('tr'), 26, 700)];
+    const cols = [['Gündem', 'sari'], ['Notlar', 'mavi'], ['Kararlar', 'yesil'], ['Aksiyonlar', 'pembe']];
+    cols.forEach(([t, c], i) => { it.push(F_(i * 300, 0, 270, 620, t, '#ffffff')); it.push(N_(i * 300 + 25, 25, '', c, 220, 160)); });
+    return { v: 1, items: it };
+  } },
+  { id: 'story', name: 'Hikâye haritası', desc: 'Kullanıcı etkinlikleri ve adımları', make: () => {
+    const it = [T_(0, -90, 'Hikâye haritası', 28, 700)]; const acts = ['Keşfet', 'Kaydol', 'Kullan', 'Paylaş'];
+    acts.forEach((a, i) => { it.push(S_(i * 260, 0, 230, 60, 'rect', a, '#cbe3ff', { bold: true })); for (let j = 0; j < 2; j++) it.push(N_(i * 260, 90 + j * 150, '', i % 2 ? 'sari' : 'yesil', 230, 135)); });
+    return { v: 1, items: it };
+  } },
+  { id: 'month', name: 'Aylık takvim', desc: 'Haftalık ızgara', make: () => {
+    const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']; const it = [T_(0, -96, 'Ay planı', 28, 700)]; const cw = 190, ch = 150;
+    days.forEach((d, i) => it.push(T_(i * cw + 8, -34, d, 17, cw - 16, { bold: false, color: '#6b717a' })));
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) it.push(S_(c * cw, r * ch, cw - 10, ch - 10, 'rect', '', '#ffffff', { fs: 14 }));
+    return { v: 1, items: it };
   } }
 ];
 function pTplPreview(t) {
@@ -1521,14 +1740,38 @@ function pTplPreview(t) {
   const ex = pExportSvg(null, 30); P.data = saved;
   return ex ? ex.svg.replace(/width="[^"]+" height="[^"]+"/, 'preserveAspectRatio="xMidYMid meet"') : `<svg viewBox="0 0 10 6"></svg>`;
 }
+/* Kendi şablonların (localStorage) */
+function ozelSablonlar() { try { return JSON.parse(localStorage.getItem('panoOzelSablonlar')) || []; } catch { return []; } }
+function ozelSablonYaz(l) { try { localStorage.setItem('panoOzelSablonlar', JSON.stringify(l.slice(0, 40))); } catch {} }
+function klonSablon(data) {
+  const items = JSON.parse(JSON.stringify(data.items || [])); const map = {};
+  for (const it of items) { const o = it.id; it.id = uid(); map[o] = it.id; }
+  for (const it of items) { if (it.t === 'line') { if (it.a?.id) it.a.id = map[it.a.id] || it.a.id; if (it.b?.id) it.b.id = map[it.b.id] || it.b.id; } }
+  return { v: 1, items, bg: data.bg, sketch: data.sketch };
+}
+function ozelSablonEntry(o) { return { id: 'ozel:' + o.id, oid: o.id, name: o.name, desc: 'Kendi şablonun', ozel: true, make: () => klonSablon(o.data) }; }
+function pSablonKaydet() {
+  if (!P.data || !items().length) { toast('Boş pano şablon olamaz'); return; }
+  pAsk('Şablon olarak kaydet', 'Şablon adı', P.board?.title || '').then(name => {
+    if (!name) return;
+    const data = { items: JSON.parse(JSON.stringify(items())), bg: P.data.bg, sketch: P.data.sketch };
+    const l = ozelSablonlar(); l.unshift({ id: uid(), name, data }); ozelSablonYaz(l);
+    toast('Şablon kaydedildi — "Yeni pano"da görünür');
+  });
+}
 function pTemplateDialog(insert) {
+  const TUM = PTPL.concat(ozelSablonlar().map(ozelSablonEntry));
   $('#modal').innerHTML = `<div class="modal-bg"><div class="sheet ptpl-sheet"><header class="sheet-head"><button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button><h3>${insert ? 'Şablon ekle' : 'Yeni pano'}</h3></header>
     <div class="set-body">${insert ? '' : `<label class="nask-l">Panonun adı<input id="pNewTitle" value="" placeholder="Adsız pano" maxlength="80" autocomplete="off"></label>`}
-      <div class="ptpl-grid">${PTPL.filter(t => !insert || t.id !== 'blank').map(t => `<button type="button" class="ptpl" data-tpl="${t.id}"><div class="ptpl-prev">${t.id === 'blank' ? `<div class="ptpl-blank">${IC.plus}</div>` : pTplPreview(t)}</div><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></button>`).join('')}</div>
+      <form class="searchbox ptpl-search" id="pTplSearchForm">${IC.search}<input id="pTplSearch" type="search" placeholder="Şablon ara" autocomplete="off"></form>
+      <div class="ptpl-grid">${TUM.filter(t => !insert || t.id !== 'blank').map(t => `<button type="button" class="ptpl${t.ozel ? ' ptpl-ozel' : ''}" data-tpl="${t.id}" data-ara="${esc((t.name + ' ' + t.desc).toLocaleLowerCase('tr'))}"><div class="ptpl-prev">${t.id === 'blank' ? `<div class="ptpl-blank">${IC.plus}</div>` : pTplPreview(t)}</div><b>${esc(t.name)}</b><span>${esc(t.desc)}</span>${t.ozel ? `<button type="button" class="ptpl-sil" data-sil="${esc(t.oid)}" title="Şablonu sil">${IC.trash}</button>` : ''}</button>`).join('')}</div>
+      <div class="ptpl-bos" id="pTplBos" hidden>Eşleşen şablon yok</div>
     </div></div></div>`;
   $('#modal').querySelector('.ptpl-grid').addEventListener('click', async e => {
+    const sil = e.target.closest('[data-sil]');
+    if (sil) { e.stopPropagation(); ozelSablonYaz(ozelSablonlar().filter(o => o.id !== sil.dataset.sil)); pTemplateDialog(insert); return; }
     const b = e.target.closest('[data-tpl]'); if (!b) return;
-    const t = PTPL.find(x => x.id === b.dataset.tpl);
+    const t = TUM.find(x => x.id === b.dataset.tpl);
     if (insert) { closeModal(); return pInsertTemplate(t); }
     const title = ($('#pNewTitle')?.value || '').trim() || (t.id === 'blank' ? 'Adsız pano' : t.name);
     b.disabled = true;
@@ -1539,9 +1782,17 @@ function pTemplateDialog(insert) {
       closeModal(); pOpen(r.id);
     } catch (err) { b.disabled = false; if (!(err instanceof AuthError)) toast('Pano oluşturulamadı: ' + err.message); }
   });
+  $('#pTplSearchForm')?.addEventListener('submit', e => e.preventDefault());
+  $('#pTplSearch')?.addEventListener('input', e => {
+    const q = e.target.value.trim().toLocaleLowerCase('tr');
+    let n = 0;
+    $('#modal').querySelectorAll('.ptpl').forEach(b => { const g = !q || (b.dataset.ara || '').includes(q); b.hidden = !g; if (g) n++; });
+    const bos = $('#pTplBos'); if (bos) bos.hidden = n > 0;
+  });
   setTimeout(() => $('#pNewTitle')?.focus(), 60);
 }
 const pNewDialog = () => pTemplateDialog(false);
+function pDosya(ad, icerik, tur) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([icerik], { type: tur })); a.download = ad; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
 function pInsertTemplate(t) {
   const d = t.make(); const list = d.items;
   const r = stageRect(), c = toWorld(r.left + r.width / 2, r.top + r.height / 2);
@@ -1554,19 +1805,21 @@ function pInsertTemplate(t) {
 /* ═════════ Menüler ═════════ */
 function pMenu(btn) {
   pPop(btn, `${pItem('present', IC.play, 'Sunum')}${pItem('vote', IC.vote, P.voting ? 'Oylamayı bitir' : 'Nokta oylaması başlat')}${pItem('timer', IC.timer, 'Zamanlayıcı')}<div class="ctx-sep"></div>
-    ${pItem('sketch', IC.sketchI, P.data?.sketch ? 'Düzgün görünüme dön' : 'El çizimi görünümü')}${pItem('mini', IC.mapI, P.mini ? 'Mini haritayı gizle' : 'Mini haritayı göster')}${pItem('grid', IC.grid, P.grid ? 'Noktalı zemini gizle' : 'Noktalı zemini göster')}${pItem('fit', IC.fit, 'Hepsini göster (Shift+1)')}${pItem('tpl', IC.template, 'Şablon ekle')}
+    ${pItem('sketch', IC.sketchI, P.data?.sketch ? 'Düzgün görünüme dön' : 'El çizimi görünümü')}${pItem('mini', IC.mapI, P.mini ? 'Mini haritayı gizle' : 'Mini haritayı göster')}${pItem('grid', IC.grid, 'Zemin deseni ve rengi…')}${pItem('fit', IC.fit, 'Hepsini göster (Shift+1)')}${pItem('find', IC.search2, 'Panoda ara (Ctrl+F)')}${pItem('tpl', IC.template, 'Şablon ekle')}${pItem('savetpl', IC.template, 'Şablon olarak kaydet')}
     ${pItem('keys', IC.keyboard || IC.gear, 'Klavye kısayolları')}<div class="ctx-sep"></div>${pItem('dup', IC.copy, 'Panoyu çoğalt')}${pItem('del', IC.trash, 'Panoyu sil', 'data-danger')}`, async v => {
+    if (v === 'savetpl') return pSablonKaydet();
     if (v === 'present') return pPresent();
     if (v === 'vote') return pVoting(!P.voting);
     if (v === 'timer') return pTimerMenu(btn);
     if (v === 'sketch') { pSnap(); P.data.sketch = !P.data.sketch; wrapCache.clear(); pChanged(); pRender(); return; }
     if (v === 'mini') { P.mini = !P.mini; store.set('panoMini', P.mini); return pMiniSoon(); }
-    if (v === 'grid') { P.grid = !P.grid; store.set('panoGrid', P.grid); $('#pStage').classList.toggle('grid', P.grid); }
+    if (v === 'grid') return pZeminMenu(btn);
     if (v === 'fit') pFit();
+    if (v === 'find') pAra();
     if (v === 'tpl') pTemplateDialog(true);
     if (v === 'keys') pKeysHelp();
     if (v === 'dup') { await pSave(); try { const r = await PDB.create(P.board.title + ' (kopya)', P.data); P.boards.unshift({ id: r.id, title: P.board.title + ' (kopya)', modified: r.modified }); toast('Pano çoğaltıldı'); pOpen(r.id); } catch (e) { if (!(e instanceof AuthError)) toast('Çoğaltılamadı: ' + e.message); } }
-    if (v === 'del') { if (confirm(`"${P.board.title}" silinsin mi? Drive'ın çöp kutusuna gider, 30 gün içinde geri alınabilir.`)) pDeleteBoard(P.board); }
+    if (v === 'del') { if (confirm(YEREL ? `"${P.board.title}" silinsin mi? 7 gün içinde geri alınabilir.` : `"${P.board.title}" silinsin mi? Drive'ın çöp kutusuna gider, 30 gün içinde geri alınabilir.`)) pDeleteBoard(P.board); }
   });
 }
 function pZoomMenu(btn) {
@@ -1575,7 +1828,7 @@ function pZoomMenu(btn) {
   });
 }
 const PKEYS = [['V', 'Seç'], ['H ya da Boşluk', 'Kaydır'], ['N', 'Yapışkan not'], ['T', 'Metin'], ['R', 'Şekil'], ['L', 'Bağlantı oku'], ['P', 'Kalem'], ['E', 'Silgi'], ['F', 'Çerçeve'], ['I', 'Resim'],
-  ['Çift tık', 'Boş yerde yeni not, öğede yazı'], ['Tab (notta)', 'Yanına yeni not'], ['Ctrl + Z / Y', 'Geri al / Yinele'], ['Ctrl + C / X / V', 'Kopyala / Kes / Yapıştır'], ['Ctrl + D', 'Çoğalt'], ['Alt + sürükle', 'Kopyasını sürükle'],
+  ['Çift tık', 'Boş yerde yeni not, öğede yazı'], ['Tab (notta)', 'Yanına yeni not'], ['Ctrl + Z / Y', 'Geri al / Yinele'], ['Ctrl + C / X / V', 'Kopyala / Kes / Yapıştır'], ['Ctrl + D', 'Çoğalt'], ['Ctrl + G', 'Grupla / grubu çöz'], ['Ctrl + L', 'Kilitle / kilidi aç'], ['Ctrl + F', 'Panoda ara'], ['Alt + sürükle', 'Kopyasını sürükle'],
   ['Delete', 'Sil'], ['Oklar', 'Kaydır (Shift ile hızlı)'], ['Ctrl + kaydırma', 'Yakınlaştır'], ['Shift + 1 / 2 / 0', 'Hepsi / seçilen / %100']];
 function pKeysHelp() {
   $('#modal').innerHTML = `<div class="modal-bg"><div class="sheet nask" style="width:min(560px,100%)"><header class="sheet-head"><button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button><h3>Klavye kısayolları</h3></header>
@@ -1587,8 +1840,15 @@ function pSettings() {
   $('#modal').innerHTML = `<div class="modal-bg"><div class="sheet settings"><header class="sheet-head"><button type="button" class="icon-btn" data-action="close-modal">${IC.close}</button><h3>Ayarlar</h3></header>
     <div class="set-body">
       <section><h4>Görünüm</h4><div class="seg yon-seg">${[['light', 'Cam'], ['dark', 'Koyu'], ['auto', 'Otomatik'], ['flat', 'Düz']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-action="p-theme" data-t="${k}">${n}</button>`).join('')}</div></section>
-      <section><h4>Hesap</h4><div class="set-row"><div><b>${esc(S.email || '')}</b><span>Panolar bu hesabın Google Drive'ında, "Suha Pano" klasöründe saklanır. Program Drive'daki başka dosyalarını göremez.</span></div>
-        <button class="btn" data-action="logout">${IC.logout}Çıkış yap</button></div></section>
+      ${YEREL ? `<section><h4>Panoların</h4>
+        <div class="set-row"><div><b>Bu cihazda</b><span>${P.boards.length} pano yalnızca bu cihazda saklanır; giriş gerekmez, hiçbir yere gönderilmez. Başka cihaza taşımak için panoyu "Dışa aktar" ile .pano dosyası yapıp orada "Pano dosyası aç" ile aç.</span></div></div>
+        <div class="set-row"><div><b>Tüm panoların yedeği</b><span>Bütün panoları tek .json dosyasında indirir.</span></div><button class="btn sm" data-action="p-yedek">${IC.download}Yedek al</button></div>
+        <div class="set-row"><div><b>Yedeği geri yükle</b><span>Yedekteki panolar eklenir; mevcut panolara dokunulmaz.</span></div><button class="btn sm" data-action="p-yedek-ac">${IC.upload}Dosya seç</button></div>
+        <div class="set-row"><div><b>Eski Google Drive panoların mı var?</b><span>Önceden Drive'a kaydettiğin panoları görmek için Google ile gir; sonra "Cihaza aktar" ile buraya kopyalayabilirsin.</span></div><button class="btn sm" data-action="p-drive-ac">Drive'ı aç</button></div></section>`
+      : DEMO ? '' : `<section><h4>Hesap</h4><div class="set-row"><div><b>${esc(S.email || '')}</b><span>Panolar bu hesabın Google Drive'ında, "Suha Pano" klasöründe saklanır. Program Drive'daki başka dosyalarını göremez.</span></div>
+        <button class="btn" data-action="logout">${IC.logout}Çıkış yap</button></div>
+        <div class="set-row"><div><b>Panoları cihaza aktar</b><span>Drive'daki bütün panoları bu cihaza kopyalar. Sonra Drive'a ihtiyacın kalmaz.</span></div><button class="btn sm" data-action="p-cihaza-aktar">Aktar</button></div>
+        <div class="set-row"><div><b>Cihazda saklamaya dön</b><span>Giriş istemeyen varsayılan moda geçer.</span></div><button class="btn sm" data-action="p-yerel-don">Dön</button></div></section>`}
       <section><h4>Uygulama</h4>${typeof aboutRow === 'function' ? aboutRow() : ''}${typeof feedbackRow === 'function' ? feedbackRow() : ''}</section>
     </div></div></div>`;
 }
@@ -1597,8 +1857,14 @@ Object.assign(ACTIONS, {
   'p-new': () => pNewDialog(),
   'p-open': (el, e) => { if (e?.target.closest('.pl-more')) return; pOpen(el.dataset.id); },
   'p-card-menu': (el, e) => { e?.stopPropagation(); pCardMenu(el); },
+  'p-sort': el => { const onay = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"/></svg>'; pPop(el, Object.entries(SORT_ADLAR).map(([v, l]) => pItem(v, panoSort === v ? onay : '<i></i>', l)).join(''), v => { panoSort = v; store.set('panoSort', v); const lbl = $('#pSortLbl'); if (lbl) lbl.textContent = sortLabel(); pListRender(); }); },
   'p-import': () => pImport(),
   'p-settings': () => pSettings(),
+  'p-yedek': async () => { try { const l = []; for (const b of P.boards) l.push({ title: b.title, modified: b.modified, data: await PDB.get(b.id) }); pDosya(`Pano yedeği ${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ suha: 'pano-yedek', surum: 1, panolar: l }), 'application/json'); toast(`${l.length} pano yedeklendi`); } catch (e) { toast('Yedek alınamadı: ' + e.message); } },
+  'p-yedek-ac': () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json'; i.onchange = async () => { const f = i.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (d.suha !== 'pano-yedek' || !Array.isArray(d.panolar)) throw new Error('Bu bir Pano yedeği değil'); let n = 0; for (const p of d.panolar.slice(0, 500)) { const t = String(p.title || 'Pano').slice(0, 80); await PDB.create(t, pNormalize(p.data)); n++; } toast(`${n} pano geri yüklendi`); closeModal(); pListLoad(!P.board); } catch (e) { toast('Yüklenemedi: ' + e.message); } }; i.click(); },
+  'p-drive-ac': () => { store.set('panoDepo', 'drive'); location.href = location.pathname; },
+  'p-yerel-don': () => { store.set('panoDepo', 'yerel'); location.href = location.pathname; },
+  'p-cihaza-aktar': async () => { if (!confirm('Drive\'daki bütün panolar bu cihaza kopyalansın mı?')) return; try { const l = await PDB_REAL.list(); const ac = await new Promise((res, rej) => { const r = indexedDB.open('suha-pano', 1); r.onupgradeneeded = () => r.result.createObjectStore('pano', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); let n = 0; for (const b of l) { const d = await PDB_REAL.get(b.id); await new Promise((res, rej) => { const t = ac.transaction('pano', 'readwrite'); t.objectStore('pano').put({ id: 'y' + uid() + uid(), title: b.title, data: pNormalize(d), modified: b.modified || Date.now(), trashed: false }); t.oncomplete = res; t.onerror = () => rej(t.error); }); n++; } toast(`${n} pano cihaza aktarıldı. "Dön" ile cihazda saklamaya geçebilirsin`, [], 7000); } catch (e) { if (!(e instanceof AuthError)) toast('Aktarılamadı: ' + e.message); } },
   'p-theme': el => { store.set('theme', el.dataset.t); applyTheme(el.dataset.t); pSettings(); },
   'p-home': async () => { pEditEnd(); if (P.dirty) await pSave(); store.del('panoLast'); P.board = null; pListLoad(); },
   'p-undo': () => pUndo(), 'p-redo': () => pRedo(),
@@ -1676,11 +1942,12 @@ const PSTAMPS = ['👍', '👎', '❤️', '⭐', '✅', '❌', '❓', '❗', '�
 const pCenter = () => { const r = stageRect(); return toWorld(r.left + r.width / 2, r.top + r.height / 2); };
 function pPlace(list) { pSnap(); P.data.items.push(...list); pSetTool('select'); P.sel = new Set(list.map(i => i.id)); pChanged(); pRender(); }
 function pInsertMenu(btn) {
-  pPop(btn, `${pItem('img', IC.image, 'Resim')}${pItem('icon', IC.iconsI, 'Simge…')}${pItem('table', IC.tableI, 'Tablo')}${pItem('link', IC.linkI, 'Bağlantı kartı…')}
-    <div class="ctx-sep"></div>${pItem('notes', IC.noteI, "Notlar'dan…")}${pItem('mail', IC.mailI, "Mail'den…")}<div class="ctx-sep"></div>${pItem('tpl', IC.template, 'Şablon…')}`, v => {
+  pPop(btn, `${pItem('img', IC.image, 'Resim')}${pItem('icon', IC.iconsI, 'Simge…')}${pItem('table', IC.tableI, 'Tablo')}${pItem('todo', IC.vote, 'Yapılacaklar listesi')}${pItem('link', IC.linkI, 'Bağlantı kartı…')}
+    <div class="ctx-sep"></div>${YEREL ? '' : pItem('notes', IC.noteI, "Notlar'dan…") + pItem('mail', IC.mailI, "Mail'den…")}<div class="ctx-sep"></div>${pItem('tpl', IC.template, 'Şablon…')}`, v => {
     if (v === 'img') pPickImage();
     if (v === 'icon') pIconPicker();
     if (v === 'table') { const c = pCenter(); pPlace([{ id: uid(), t: 'table', x: r1(c.x - 210), y: r1(c.y - 60), cols: [140, 140, 140], cells: [['Başlık 1', 'Başlık 2', 'Başlık 3'], ['', '', ''], ['', '', '']], header: true, fs: 15 }]); }
+    if (v === 'todo') pTodoYeni();
     if (v === 'link') pLinkAsk();
     if (v === 'notes') pNotesPicker();
     if (v === 'mail') pMailPicker();
@@ -1846,8 +2113,11 @@ function pPresent() {
   // sıra: yukarıdan aşağı satırlar, satır içinde soldan sağa
   frames.sort((a, b) => Math.abs(a.y - b.y) > 120 ? a.y - b.y : a.x - b.x);
   pEditEnd(); P.sel.clear(); pRenderOverlay();
-  Object.assign(PRES, { on: true, list: frames.map(f => f.id), i: 0, view: { ...P.V } });
+  Object.assign(PRES, { on: true, list: frames.map(f => f.id), i: 0, view: { ...P.V }, laser: false });
   $('#pShell').classList.add('presenting');
+  PRES.laserEl = document.createElement('div'); PRES.laserEl.className = 'plaser'; PRES.laserEl.hidden = true; document.body.appendChild(PRES.laserEl);
+  PRES.onMove = e => { if (PRES.laser && PRES.laserEl) { PRES.laserEl.hidden = false; PRES.laserEl.style.left = e.clientX + 'px'; PRES.laserEl.style.top = e.clientY + 'px'; } };
+  window.addEventListener('pointermove', PRES.onMove);
   try { document.documentElement.requestFullscreen?.(); } catch {}
   setTimeout(() => pPresGo(0), 120);
 }
@@ -1856,12 +2126,20 @@ function pPresGo(i) {
   const id = PRES.list[PRES.i], f = byId(id); if (!f) return;
   pFit(true, new Set([id]));
   const el = $('#pPres'); el.hidden = false;
-  el.innerHTML = `<button type="button" class="icon-btn" data-pres="prev" ${PRES.i ? '' : 'disabled'}>${IC.chevL || '‹'}</button><span>${esc(f.title || '')} · ${PRES.i + 1}/${PRES.list.length}</span><button type="button" class="icon-btn" data-pres="next" ${PRES.i < PRES.list.length - 1 ? '' : 'disabled'}>${IC.chevR || '›'}</button><button type="button" class="icon-btn" data-pres="end" title="Bitir (Esc)">${IC.close}</button>`;
-  el.onclick = e => { const b = e.target.closest('[data-pres]'); if (!b) return; const a = b.dataset.pres; if (a === 'prev') pPresGo(PRES.i - 1); if (a === 'next') pPresGo(PRES.i + 1); if (a === 'end') pPresEnd(); };
+  const laserIc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg>';
+  el.innerHTML = `<button type="button" class="icon-btn" data-pres="prev" ${PRES.i ? '' : 'disabled'}>${IC.chevL || '‹'}</button><span>${esc(f.title || '')} · ${PRES.i + 1}/${PRES.list.length}</span><button type="button" class="icon-btn" data-pres="next" ${PRES.i < PRES.list.length - 1 ? '' : 'disabled'}>${IC.chevR || '›'}</button><button type="button" class="icon-btn ${PRES.laser ? 'on' : ''}" data-pres="laser" title="Lazer işaretçi (L)">${laserIc}</button><button type="button" class="icon-btn" data-pres="end" title="Bitir (Esc)">${IC.close}</button>`;
+  el.onclick = e => { const b = e.target.closest('[data-pres]'); if (!b) return; const a = b.dataset.pres; if (a === 'prev') pPresGo(PRES.i - 1); if (a === 'next') pPresGo(PRES.i + 1); if (a === 'laser') pLaserToggle(); if (a === 'end') pPresEnd(); };
+}
+function pLaserToggle() {
+  PRES.laser = !PRES.laser;
+  if (!PRES.laser && PRES.laserEl) PRES.laserEl.hidden = true;
+  pPresGo(PRES.i);
 }
 function pPresEnd() {
   if (!PRES.on) return;
   PRES.on = false; $('#pShell')?.classList.remove('presenting'); $('#pPres').hidden = true;
+  if (PRES.onMove) { window.removeEventListener('pointermove', PRES.onMove); PRES.onMove = null; }
+  PRES.laserEl?.remove(); PRES.laserEl = null; PRES.laser = false;
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   if (PRES.view) { P.V = PRES.view; pApplyView(); pRenderOverlay(); }
 }
@@ -1869,6 +2147,7 @@ document.addEventListener('keydown', e => {
   if (!PRES.on) return;
   if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); pPresGo(PRES.i + 1); }
   else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); pPresGo(PRES.i - 1); }
+  else if (e.key === 'l' || e.key === 'L') { e.preventDefault(); e.stopImmediatePropagation(); pLaserToggle(); }
   else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); pPresEnd(); }
 }, true);
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && PRES.on) pPresEnd(); });
@@ -1911,7 +2190,8 @@ function pVoteBanner() {
 /* ═════════ Zamanlayıcı ═════════ */
 const TMR = { end: 0, left: 0, total: 0, run: false, t: 0 };
 function pTimerMenu(btn) {
-  pPop(btn, `<div class="ctx-title">Zamanlayıcı</div>${[1, 3, 5, 10, 15, 30].map(m => pItem('m' + m, '<i></i>', `${m} dakika`)).join('')}${pItem('custom', '<i></i>', 'Başka…')}${TMR.total ? pItem('stop', IC.close, 'Durdur') : ''}`, async v => {
+  const tmrOnay = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="13" r="8"/><path d="M9 2h6"/></svg>';
+  pPop(btn, `<div class="ctx-title">Zamanlayıcı</div>${pItem('m25', tmrOnay, 'Pomodoro (25 dk)')}${pItem('m5', tmrOnay, 'Kısa mola (5 dk)')}<div class="ctx-sep"></div>${[1, 3, 10, 15, 30].map(m => pItem('m' + m, '<i></i>', `${m} dakika`)).join('')}${pItem('custom', '<i></i>', 'Başka…')}${TMR.total ? pItem('stop', IC.close, 'Durdur') : ''}`, async v => {
     if (v === 'stop') return pTimerStop();
     let m = +v.slice(1);
     if (v === 'custom') { const a = await pAsk('Zamanlayıcı', 'Kaç dakika?', '7', 'Başlat'); m = parseFloat(String(a || '').replace(',', '.')); if (!(m > 0)) return; }
@@ -2120,4 +2400,11 @@ async function pToCalendar(notes) {
     closeModal(); pChanged(); pRender();
     toast(ok === notes.length ? `${ok} not Takvim'e eklendi` : `${ok}/${notes.length} not eklendi`);
   });
+}
+
+/* Cihazda saklama modunda Google girişi hiç istenmez */
+if (YEREL) {
+  document.removeEventListener('DOMContentLoaded', boot);
+  const basla = () => { if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {}); start(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', basla); else basla();
 }

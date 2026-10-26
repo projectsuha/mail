@@ -1,0 +1,20 @@
+{
+  "id": "./borsa.html",
+  "name": "Borsa",
+  "short_name": "Borsa",
+  "description": "Hisse, döviz, altın ve kripto takibi; portföy ve gerçek getiri, fiyat alarmları.",
+  "start_url": "./borsa.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8eaed",
+  "theme_color": "#26282c",
+  "icons": [
+    { "src": "borsa-192.png?v=8", "sizes": "192x192", "type": "image/png" },
+    { "src": "borsa-512.png?v=8", "sizes": "512x512", "type": "image/png" },
+    { "src": "borsa-maskable.png?v=8", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Portföy", "short_name": "Portföy", "url": "./borsa.html?sekme=portfoy", "icons": [{ "src": "borsa-192.png?v=8", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Alarmlar", "short_name": "Alarmlar", "url": "./borsa.html?sekme=alarmlar", "icons": [{ "src": "borsa-192.png?v=8", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

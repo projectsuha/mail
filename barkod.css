@@ -236,3 +236,22 @@ body.bk-duz-acik { overflow: hidden; }
   .bk-yaz-sag { padding: 12px 14px; }
   .bk-sayfalar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ───── Karakter: kraft (kraft kâğıt, etiket) ───── */
+html:has(body.bk-app):not([data-theme="dark"]) { background: #e4d3b2 radial-gradient(rgba(120, 90, 40, .09) 1px, transparent 1px) 0 0 / 6px 6px fixed !important; }
+html:has(body.bk-app)[data-theme="dark"] { background: #231d14 radial-gradient(rgba(255, 220, 160, .05) 1px, transparent 1px) 0 0 / 6px 6px fixed !important; }
+@media (prefers-color-scheme: dark) { html:has(body.bk-app)[data-theme="auto"] { background: #231d14 radial-gradient(rgba(255, 220, 160, .05) 1px, transparent 1px) 0 0 / 6px 6px fixed !important; } }
+body.bk-app { --bk-mavi: #d9480f; background: transparent !important; }
+html:has(body.bk-app):not([data-theme="dark"]) body.bk-app { --bg-2: rgba(255, 252, 244, .72); --bg: #fffdf6; --bg-3: #f1e6cf; --line: rgba(120, 90, 40, .2); --fg: #3a2c18; --fg-2: #6a5638; --fg-3: #8a7454; color: #3a2c18; }
+html[data-theme="dark"] body.bk-app { --bg-2: rgba(255, 240, 210, .06); --bg-3: rgba(255, 240, 210, .1); --line: rgba(255, 240, 210, .12); }
+body.bk-app .brand-mark { background: #3a2c18; border-color: #3a2c18; color: #f2e6cf; box-shadow: none; }
+body.bk-app .seg button.on { background: #3a2c18; color: #f2e6cf; }
+html[data-theme="dark"] body.bk-app .brand-mark, html[data-theme="dark"] body.bk-app .seg button.on { background: #f2e6cf; color: #3a2c18; border-color: #f2e6cf; }
+/* Önizleme: delikli etiket kartı */
+body.bk-app .bk-on-kutu { position: relative; background: #fffdf6; border-radius: 12px; box-shadow: 0 2px 0 rgba(0,0,0,.05), 0 14px 28px rgba(70, 50, 20, .18); overflow: visible; }
+body.bk-app .bk-on-kutu:not(.kucuk)::before, body.bk-app .bk-on-kutu:not(.kucuk)::after { content: ''; position: absolute; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%; background: #e4d3b2; box-shadow: inset 0 1px 2px rgba(0,0,0,.15); }
+html[data-theme="dark"] body.bk-app .bk-on-kutu:not(.kucuk)::before, html[data-theme="dark"] body.bk-app .bk-on-kutu:not(.kucuk)::after { background: #231d14; }
+body.bk-app .bk-on-kutu:not(.kucuk)::before { left: -9px; } body.bk-app .bk-on-kutu:not(.kucuk)::after { right: -9px; }
+body.bk-app .bk-kart { box-shadow: 0 6px 18px rgba(70, 50, 20, .08); }
+body.bk-app .bk-tur.on { background: #3a2c18; border-color: #3a2c18 !important; color: #f2e6cf; }
+body.bk-app .btn.primary { background: #d9480f; border-color: #d9480f; color: #fff; }

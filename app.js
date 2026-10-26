@@ -486,12 +486,13 @@ function parseMessage(m) {
 }
 
 // Postanın ham hali (RFC 822). Ek varsa multipart/mixed; her parça base64 olduğu için metin tamamen ASCII'dir.
-function buildMime({ to, cc, subject, body, inReplyTo, references, scheduledAt, attachments }) {
+function buildMime({ to, cc, bcc, subject, body, inReplyTo, references, scheduledAt, attachments }) {
   const encWord = s => /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + bytesToB64(utf8(s)) + '?=';
   const wrap = b64 => b64.replace(/.{76}/g, '$&\r\n');
   const addrs = s => emailsIn(s).join(', ');
   const lines = [`To: ${addrs(to)}`];
   if (cc && emailsIn(cc).length) lines.push(`Cc: ${addrs(cc)}`);
+  if (bcc && emailsIn(bcc).length) lines.push(`Bcc: ${addrs(bcc)}`);
   lines.push(`Subject: ${encWord(subject || '')}`, 'MIME-Version: 1.0');
   if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`, `References: ${[references, inReplyTo].filter(Boolean).join(' ')}`);
   // Zamanlanmış gönderim: Google zamanlayıcısı ve uygulama bu başlığa bakar
@@ -647,8 +648,12 @@ function showSetup() {
   </div>`;
 }
 
+// Giriş ekranındaki kısa güven etiketleri (Mail, Notlar, Pano ortak). Üzerine gelince ayrıntı görünür.
+function guvenCipleri(liste) {
+  return `<ul class="guven">${liste.map(([ic, t, d]) => `<li title="${esc(d || '')}">${ic}<span>${t}</span></li>`).join('')}</ul>`;
+}
+
 function showLogin(msg) {
-  const pt = (ic, t, d) => `<li>${ic}<div><b>${t}</b><span>${d}</span></div></li>`;
   $('#app').innerHTML = `
   <div class="center-screen login-screen">
     <div class="brand-mark">${IC.mail}</div>
@@ -656,11 +661,7 @@ function showLogin(msg) {
     <p class="login-sub">Gmail için sade ve güvenli bir program · Bir Suha projesi</p>
     ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
     <button class="btn primary login-btn" data-action="login-start">Google ile giriş yap</button>
-    <ul class="trust">
-      ${pt(IC.shield, 'Şifren bize hiç gelmez', 'Giriş Google\'ın kendi sayfasında yapılır. Adres çubuğunda <b>accounts.google.com</b> yazdığından emin ol.')}
-      ${pt(IC.mail, 'Mailler sadece bu cihazda', 'Sunucumuz yok. Mailler Google\'dan doğrudan bu cihaza gelir, başka hiçbir yere gönderilmez.')}
-      ${pt(IC.logout, 'İzni istediğin an geri al', 'Çıkış yapınca bu cihazdaki kişisel her şey silinir. Erişimi Google hesabından da kaldırabilirsin.')}
-    </ul>
+    ${guvenCipleri([[IC.shield, 'Şifren bize gelmez', 'Giriş Google\'ın kendi sayfasında yapılır (accounts.google.com).'], [IC.mail, 'Mailler sadece bu cihazda', 'Sunucumuz yok; mailler Google\'dan doğrudan bu cihaza gelir.'], [IC.logout, 'İstediğin an çık, her şey silinir', 'Çıkış yapınca bu cihazdaki kişisel her şey silinir.']])}
     <details class="perm-list">
       <summary>Hangi izinleri istiyoruz, neden?</summary>
       <ul>
@@ -830,6 +831,9 @@ async function loadList(more) {
   if (!more && typeof snPinBack === 'function') snPinBack();
 }
 
+const AV_PAL = ['#4262ff', '#e5544b', '#2f9e47', '#e0952b', '#8e4ec6', '#0ea5a5', '#d6457a', '#5a67d8', '#c2410c', '#0d9488'];
+function avInit(s) { s = String(s || '').replace(/^Kime:\s*/, '').replace(/<.*/, '').trim(); const m = s.match(/[\p{L}\p{N}]/u); return (m ? m[0] : '?').toLocaleUpperCase('tr'); }
+function avColor(s) { s = String(s || '').replace(/<.*/, ''); let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return AV_PAL[h % AV_PAL.length]; }
 function renderList(loading) {
   const el = $('#list');
   if (!el) return;
@@ -849,6 +853,7 @@ function renderList(loading) {
     const who = showTo ? 'Kime: ' + (t.to || '') : t.from;
     return `<div class="row ${t.unread ? 'unread' : ''} ${S.threadId === t.id ? 'sel' : ''}" data-action="open-thread" data-id="${t.id}" draggable="true">
       <button class="row-check" data-action="sel-toggle" data-id="${t.id}" role="checkbox" aria-checked="false" aria-label="Seç" title="Seç (X)">${IC.check}</button>
+      <div class="avatar" style="background:${avColor(who)}">${esc(avInit(who))}</div>
       <div class="row-main">
         <div class="row-top"><span class="who">${esc(who)}${t.count > 1 ? ` <i>${t.count}</i>` : ''}</span><span class="date">${fmtDate(t.date)}</span></div>
         <div class="subj">${typeof phishMark === 'function' ? phishMark(t) : ''}${t.starred ? '<span class="st">★</span>' : ''}${esc(t.subject || '(konu yok)')}</div>
@@ -1097,6 +1102,7 @@ function renderThread() {
         const open = S.openMsgs.has(m.id);
         return `<article class="msg ${open ? 'open' : ''}" data-mid="${m.id}">
           <header class="msg-head" data-action="toggle-msg">
+            <div class="avatar msg-av" style="background:${avColor(m.from)}">${esc(avInit(m.from))}</div>
             <div class="msg-who">
               <div><b>${esc(m.from)}</b> <span class="addr">&lt;${esc(m.fromEmail)}&gt;</span></div>
               <div class="msg-sub">${open ? 'Kime: ' + esc(m.to) + (m.cc ? ' · Cc: ' + esc(m.cc) : '') : esc(m.snippet)}</div>
@@ -1421,8 +1427,9 @@ function openCompose(init = {}) {
         <button type="button" class="icon-btn sched-btn" data-action="sched-menu" title="Gönderme zamanını planla">${IC.clock}</button>
         <button type="submit" class="btn primary">${IC.send} Gönder</button>
       </header>
-      <label class="field"><span>Kime</span><input name="to" type="text" inputmode="email" autocomplete="email" value="${esc(init.to || '')}" required></label>
-      ${init.cc ? `<label class="field"><span>Cc</span><input name="cc" type="text" value="${esc(init.cc)}"></label>` : ''}
+      <label class="field"><span>Kime</span><input name="to" type="text" inputmode="email" autocomplete="email" value="${esc(init.to || '')}" required><button type="button" class="cc-tog" data-cc-tog title="Cc / Bcc ekle">Cc/Bcc</button></label>
+      <label class="field cc-row" ${init.cc ? '' : 'hidden'}><span>Cc</span><input name="cc" type="text" value="${esc(init.cc || '')}"></label>
+      <label class="field bcc-row" hidden><span>Bcc</span><input name="bcc" type="text" value=""></label>
       <label class="field"><span>Konu</span><input name="subject" type="text" spellcheck="true" lang="tr" autocorrect="on" autocapitalize="sentences" value="${esc(init.subject || '')}"></label>
       <div class="cmp-atts" id="cmpAtts" hidden></div>
       <textarea name="body" spellcheck="true" lang="tr" autocorrect="on" autocapitalize="sentences" placeholder="Mesajını yaz…">
@@ -1431,6 +1438,11 @@ ${esc(typeof bodyWithSignature === 'function' ? bodyWithSignature(init) : (init.
   </div>`;
   const form = $('#composeForm');
   const ta = form.body;
+  form.querySelector('[data-cc-tog]')?.addEventListener('click', () => {
+    const cc = form.querySelector('.cc-row'), bcc = form.querySelector('.bcc-row');
+    const ac = cc.hidden; cc.hidden = !ac; bcc.hidden = !ac;
+    if (ac) cc.querySelector('input').focus();
+  });
   if (typeof cmpAttInit === 'function') cmpAttInit(form, init);
   // Metin alanına ilk girişte imleç en başta olsun (imzanın altında değil)
   // Tıklama imleci tıklanan yere koyar; henüz bir şey yazılmadıysa başa al
@@ -1447,7 +1459,7 @@ ${esc(typeof bodyWithSignature === 'function' ? bodyWithSignature(init) : (init.
     if (!emailsIn(form.to.value).length) { toast('Geçerli bir alıcı adresi gir'); return; }
     if (typeof cmpAttCheck === 'function' && !cmpAttCheck()) return;
     const msg = {
-      to: form.to.value, cc: form.cc?.value, subject: form.subject.value, body: ta.value,
+      to: form.to.value, cc: form.cc?.value, bcc: form.bcc?.value, subject: form.subject.value, body: ta.value,
       inReplyTo: init.inReplyTo, references: init.references, attachments: S.compose.atts?.length ? S.compose.atts : undefined
     };
     // Göndermeyi geri al: posta birkaç saniye bekletilir, bu sürede vazgeçilebilir
@@ -2151,6 +2163,7 @@ document.addEventListener('visibilitychange', () => {
 /* ───────────── Başlat ───────────── */
 
 async function start() {
+  if (!window.SUHA_PROGRAM) return window.suhaKapi();
   showShell();
   try {
     const [p, labels] = await Promise.all([Gmail.profile(), Gmail.labels()]);
@@ -2171,6 +2184,7 @@ async function start() {
 }
 
 function boot() {
+  if (!window.SUHA_PROGRAM) return window.suhaKapi();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   if (DEMO) return start();
   if (DESKTOP) {

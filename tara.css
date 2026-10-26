@@ -235,3 +235,33 @@ html[data-theme="light"] .tr-pop { background: rgba(246,247,248,.95); }
   .tr-hedefler { grid-template-columns: 1fr 1fr; }
   .tr-araclar button { flex-basis: 56px; font-size: 10.5px; }
 }
+
+/* ───── Karakter: vizör (koyu masa, turkuaz) ───── */
+html:has(body.tara-app) { background: radial-gradient(70% 50% at 20% 0%, #17302f 0%, transparent 70%), linear-gradient(180deg, #11191c, #0b1113) fixed !important; }
+body.tara-app { --tr-mavi: #14b8a6; --bg-2: rgba(255,255,255,.055); --bg: rgba(255,255,255,.06); --bg-3: rgba(255,255,255,.1); --line: rgba(255,255,255,.09); --fg: #e8f1f2; --fg-2: #b8c8ca; --fg-3: #7f9396; color: #e8f1f2; background: transparent !important; }
+body.tara-app .brand-mark { background: #14b8a6; border-color: #14b8a6; color: #04211e; box-shadow: none; }
+body.tara-app .tr-bas .icon-btn { color: #b8c8ca; }
+body.tara-app .searchbox { background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.1) !important; color: #e8f1f2; }
+body.tara-app .searchbox input { color: #e8f1f2; }
+body.tara-app .tr-cip.on { background: #14b8a6; border-color: #14b8a6; color: #04211e; }
+.tr-vizor { position: relative; display: block; width: 100%; height: 190px; margin: 0 0 16px; border: 0; border-radius: 24px; overflow: hidden; cursor: pointer; background: linear-gradient(160deg, #1d2b30, #0b1316); color: #e8f1f2; font: inherit; text-align: left; box-shadow: 0 14px 40px rgba(0,0,0,.35); }
+.tr-vizor .k { position: absolute; width: 30px; height: 30px; border: 4px solid #14b8a6; }
+.tr-vizor .k1 { left: 22px; top: 22px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; } .tr-vizor .k2 { right: 22px; top: 22px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+.tr-vizor .k3 { left: 22px; bottom: 22px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; } .tr-vizor .k4 { right: 22px; bottom: 22px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+.tr-vizor-kagit { position: absolute; right: 22%; top: 36px; width: 104px; height: 120px; background: #eef2f2; border-radius: 4px; transform: rotate(-4deg); box-shadow: 0 10px 24px rgba(0,0,0,.45); padding-top: 6px; }
+.tr-vizor-kagit i { display: block; height: 6px; margin: 11px 14px 0; background: #c9d2d3; border-radius: 3px; } .tr-vizor-kagit i:nth-child(2) { width: 60%; } .tr-vizor-kagit i:nth-child(4) { width: 45%; }
+.tr-vizor-cizgi { position: absolute; left: 26px; right: 26px; top: 20%; height: 3px; background: #14b8a6; box-shadow: 0 0 18px 4px rgba(20,184,166,.6); animation: trtara 2.8s ease-in-out infinite; }
+@keyframes trtara { 0%, 100% { top: 22%; } 50% { top: 76%; } }
+@media (prefers-reduced-motion: reduce) { .tr-vizor-cizgi { animation: none; top: 52%; } }
+.tr-vizor-yazi { position: absolute; left: 34px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; gap: 3px; max-width: 50%; }
+.tr-vizor-yazi b { font-size: 21px; } .tr-vizor-yazi small { font-size: 13px; color: #9fb4b7; line-height: 1.4; }
+.tr-vizor-dugme { width: 50px; height: 50px; margin-bottom: 8px; border-radius: 50%; background: #14b8a6; color: #04211e; display: grid; place-items: center; box-shadow: 0 0 0 6px rgba(20,184,166,.18); }
+.tr-vizor-dugme svg { width: 26px; height: 26px; }
+.tr-vizor:active { transform: scale(.99); }
+body.tara-app .tr-kart { background: rgba(255,255,255,.04); box-shadow: none; overflow: visible; border: 0; }
+body.tara-app .tr-kart-r { border-radius: 6px; background: #eef2f2; box-shadow: 5px 5px 0 #24363a, 10px 10px 0 #182629; border: 0; margin: 0 10px 10px 0; }
+body.tara-app .tr-kart-m { padding: 8px 4px 4px; }
+body.tara-app .tr-fab-b { background: #14b8a6; color: #04211e; }
+body.tara-app .tr-fab-k { background: rgba(30,40,44,.9); color: #e8f1f2; }
+body.tara-app .tr-bos svg { color: #4f6a6e; }
+@media (max-width: 640px) { .tr-vizor { height: 170px; } .tr-vizor-kagit { right: 10%; width: 88px; height: 104px; } .tr-vizor-yazi { max-width: 55%; } }

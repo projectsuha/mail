@@ -133,3 +133,31 @@ html[data-theme="dark"] .qr-guv.iyi { color: #4ade80; } html[data-theme="dark"] 
   .qr-onizleme { position: static; order: -1; }
   .qr-onizleme canvas { max-width: 220px; }
 }
+
+/* ───── Karakter: kod (siyah-beyaz, fosforlu yeşil) ───── */
+html:has(body.qr-app):not([data-theme="dark"]) { background: #f6f6f1 !important; }
+html:has(body.qr-app)[data-theme="dark"] { background: #0e0e0c !important; }
+@media (prefers-color-scheme: dark) { html:has(body.qr-app)[data-theme="auto"] { background: #0e0e0c !important; } }
+body.qr-app { --qr-mavi: #111; --qr-yesil: #c6f432; background: transparent !important; }
+html:has(body.qr-app):not([data-theme="dark"]) body.qr-app { --bg-2: #ffffff; --bg: #ffffff; --bg-3: #ededE6; --line: #e2e2da; --fg: #111; --fg-2: #444; --fg-3: #7a7a72; }
+html[data-theme="dark"] body.qr-app { --qr-mavi: #c6f432; --bg-2: #1a1a17; --bg: #151513; --bg-3: #24241f; --line: #2c2c26; }
+body.qr-app .brand-mark { background: #111; border-color: #111; color: #c6f432; box-shadow: none; }
+html[data-theme="dark"] body.qr-app .brand-mark { background: #c6f432; color: #111; border-color: #c6f432; }
+body.qr-app .qr-ust-sekme { background: transparent; gap: 4px; }
+body.qr-app .qr-ust-sekme button { border: 1.5px solid currentColor; color: var(--fg-2); }
+body.qr-app .qr-ust-sekme button.on { background: #111; color: #c6f432; border-color: #111; box-shadow: none; }
+html[data-theme="dark"] body.qr-app .qr-ust-sekme button.on { background: #c6f432; color: #111; border-color: #c6f432; }
+body.qr-app .qr-cerceve i { border-color: #c6f432; border-width: 4px; }
+body.qr-app .qr-cerceve b { background: #c6f432; height: 3px; box-shadow: 0 0 16px 4px rgba(198,244,50,.6); }
+body.qr-app .qr-kamera { border-radius: 26px; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+body.qr-app .qr-yuvarlak.on { background: #c6f432; color: #111; }
+body.qr-app .qr-ic { background: #111; color: #c6f432; border-radius: 10px; }
+html[data-theme="dark"] body.qr-app .qr-ic { background: #c6f432; color: #111; }
+.qr-ikili { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 720px; }
+.qr-ikili button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 16px 18px; border-radius: 20px; border: 0; font: inherit; text-align: left; cursor: pointer; transition: transform .08s; }
+.qr-ikili button:active { transform: scale(.98); }
+.qr-ikili b { font-size: 17px; } .qr-ikili small { font-size: 12.5px; opacity: .7; }
+.qr-ikili .a { background: #c6f432; color: #111; } .qr-ikili .b { background: #111; color: #fff; }
+html[data-theme="dark"] .qr-ikili .b { background: #24241f; }
+body.qr-app .qr-alt-sekme button.on { color: #111; }
+html[data-theme="dark"] body.qr-app .qr-alt-sekme button.on { color: #c6f432; }

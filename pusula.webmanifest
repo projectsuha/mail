@@ -1,0 +1,55 @@
+{
+  "id": "./pusula.html",
+  "name": "Pusula",
+  "short_name": "Pusula",
+  "description": "Pusula, kıble yönü, konum (koordinat, yükseklik, hız), kayıtlı yerlere yol gösterme, güneş ve ay.",
+  "start_url": "./pusula.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8eaed",
+  "theme_color": "#26282c",
+  "icons": [
+    {
+      "src": "pusula-192.png?v=8",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pusula-512.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "pusula-maskable.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kıble",
+      "short_name": "Kıble",
+      "url": "./pusula.html?kible",
+      "icons": [
+        {
+          "src": "pusula-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Konumum",
+      "short_name": "Konum",
+      "url": "./pusula.html?konum",
+      "icons": [
+        {
+          "src": "pusula-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

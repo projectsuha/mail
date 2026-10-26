@@ -28,7 +28,7 @@ function openAbout() {
       </header>
       <div class="ab-body">
         <div class="ab-app">
-          <img class="ab-icon" src="${window.APP_ICON || 'apple-touch-icon.png?v=6'}" alt="">
+          <img class="ab-icon" src="${window.APP_ICON || 'apple-touch-icon.png?v=8'}" alt="">
           <div><b>${window.APP_NAME || 'Mail'}</b><span>Sürüm ${APP_VERSION}</span></div>
         </div>
         <p class="ab-lead">${window.APP_LEAD || 'Gmail için sade, hızlı ve gizliliğe önem veren bir posta programı. Maillerin yalnızca senin cihazında görüntülenir; arada başka bir sunucu yoktur.'}</p>

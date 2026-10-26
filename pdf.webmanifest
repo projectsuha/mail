@@ -1,0 +1,79 @@
+{
+  "id": "./pdf.html",
+  "name": "PDF",
+  "short_name": "PDF",
+  "description": "PDF araçları: birleştir, böl, sayfaları düzenle, fotoğraftan PDF, sayfa numarası, filigran, form doldur. Dosyaların cihazından çıkmaz.",
+  "start_url": "./pdf.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8eaed",
+  "theme_color": "#26282c",
+  "icons": [
+    {
+      "src": "pdf-192.png?v=8",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pdf-512.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "pdf-maskable.png?v=8",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Birleştir",
+      "short_name": "Birleştir",
+      "url": "./pdf.html?arac=birlestir",
+      "icons": [
+        {
+          "src": "pdf-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Fotoğraftan PDF",
+      "short_name": "Fotoğraf",
+      "url": "./pdf.html?arac=foto",
+      "icons": [
+        {
+          "src": "pdf-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Sayfaları düzenle",
+      "short_name": "Düzenle",
+      "url": "./pdf.html?arac=duzenle",
+      "icons": [
+        {
+          "src": "pdf-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Form doldur",
+      "short_name": "Form",
+      "url": "./pdf.html?arac=form",
+      "icons": [
+        {
+          "src": "pdf-192.png?v=8",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
