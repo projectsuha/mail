@@ -168,7 +168,7 @@ const N = {
   view: store.get('nFolder', 'all'),   // 'all' | 'trash' | klasör kimliği
   all: [], trash: null, q: '', loading: false,
   tag: null, hits: null,               // seçili #etiket, Gmail aramasından gelen not kimlikleri
-  sort: store.get('nSort', 'date'), grid: store.get('nGrid', false), offline: false,
+  sort: store.get('nSort', 'date'), grid: store.get('nGrid', false), dense: store.get('nDense', false), offline: false,
   cur: null,                           // açık not
   sel: new Set(), selMode: false, todos: null   // toplu seçim, yapılacaklar görünümü
 };
@@ -206,8 +206,30 @@ function nShell() {
   $('#nSearchForm').addEventListener('submit', e => { e.preventDefault(); s.blur(); });
   nEmptyReader();
 }
+function nGreet() {
+  const h = new Date().getHours();
+  return h < 6 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar';
+}
 function nEmptyReader() {
-  $('#reader').innerHTML = `<div class="empty-reader">${IC.notepad}<p>${N.view === 'trash' ? 'Geri getirmek için silinen bir not seç' : 'Bir not seç ya da yeni not yaz'}</p></div>`;
+  const r = $('#reader'); if (!r) return;
+  if (N.view === 'trash') {
+    r.innerHTML = `<div class="empty-reader">${IC.notepad}<p>Geri getirmek için silinen bir not seç</p></div>`;
+    return;
+  }
+  const recent = N.all.slice().sort((a, b) => b.date - a.date).slice(0, 5);
+  const tpls = NTPL.slice(0, 4);
+  r.innerHTML = `
+    <div class="nwelcome">
+      <div class="nwel-card">
+        <div class="nwel-hi">${IC.notepad}<div><h2>${nGreet()}</h2><p>Bir not seç ya da yeniden başla.</p></div></div>
+        <button class="btn nwel-new" data-action="n-new">${IC.pen} Yeni not</button>
+        <div class="nwel-sec">Şablonla başla</div>
+        <div class="nwel-tpls">${tpls.map((t, i) => `<button type="button" class="nchip" data-action="n-tpl-new" data-i="${i}">${esc(t[0])}</button>`).join('')}</div>
+        ${recent.length ? `<div class="nwel-sec">Son düzenlenenler</div>
+        <div class="nwel-recent">${recent.map(n => `<button type="button" class="nwel-r ${n.color ? 'tinted' : ''}" ${n.color ? `style="--nc:${nColor(n.color)}"` : ''} data-action="n-open" data-id="${esc(n.id)}"><span class="nwel-rt">${n.pinned ? `<span class="npin">${IC.pinFill}</span>` : ''}${esc(n.title || 'Yeni not')}</span><span class="nwel-rd">${fmtDate(n.date)}</span></button>`).join('')}</div>` : ''}
+        <div class="nwel-tip">İpucu: <kbd>Ctrl</kbd>+<kbd>K</kbd> ile her şeye hızlıca ulaş.</div>
+      </div>
+    </div>`;
 }
 
 start = async function () {
@@ -248,6 +270,7 @@ async function nLoad() {
   }
   N.loading = false;
   nRenderFolders(); nRenderList();
+  if (!N.cur) nEmptyReader();   // yükleme bitince karşılama panelini (son notlarla) tazele
 }
 // Uygulama dönüşünde ve Mail'in ortak olaylarında kullanılır
 loadList = () => (N.cur?.dirty ? Promise.resolve() : nLoad());
@@ -311,6 +334,7 @@ function nCard(n) {
 function nRenderList(loading) {
   const el = $('#list'); if (!el) return;
   el.classList.toggle('grid', !!N.grid && N.view !== 'trash');
+  el.classList.toggle('dense', !!N.dense && !(N.grid && N.view !== 'trash'));
   nRenderTags();
   $('#listTitle').textContent = N.view === 'todos' ? 'Yapılacaklar' : N.view === 'trash' ? 'Silinenler' : N.view === 'all' ? 'Notlar' : folderName(N.folders.find(f => f.id === N.view));
   if (loading && !N.all.length) { el.innerHTML = skeleton(); return; }
@@ -1079,8 +1103,10 @@ function nDictate(btn, bo, changed) {
 function nViewMenu(btn) {
   const ck = on => on ? IC.check : '<i></i>';
   nPop(btn, `<div class="ctx-title">Görünüm</div>${nItem('list', ck(!N.grid), 'Liste')}${nItem('grid', ck(N.grid), 'Kartlar')}
+    <div class="ctx-sep"></div><div class="ctx-title">Yoğunluk</div>${nItem('comfy', ck(!N.dense), 'Rahat')}${nItem('dense', ck(N.dense), 'Sıkışık')}
     <div class="ctx-sep"></div><div class="ctx-title">Sırala</div>${nItem('date', ck(N.sort === 'date'), 'Son düzenlenen')}${nItem('created', ck(N.sort === 'created'), 'Oluşturulma tarihi')}${nItem('title', ck(N.sort === 'title'), 'Başlık (A–Z)')}`, v => {
     if (v === 'list' || v === 'grid') { N.grid = v === 'grid'; store.set('nGrid', N.grid); }
+    else if (v === 'comfy' || v === 'dense') { N.dense = v === 'dense'; store.set('nDense', N.dense); }
     else { N.sort = v; store.set('nSort', v); }
     nRenderList();
   });
@@ -1190,7 +1216,73 @@ function nAfterStart() {
 Object.assign(ACTIONS, {
   'n-view': el => nViewMenu(el),
   'n-tag': el => { N.tag = N.tag === el.dataset.tag ? null : el.dataset.tag; nRenderList(); },
-  'n-tpl': el => nUseTemplate(el.dataset.i)
+  'n-tpl': el => nUseTemplate(el.dataset.i),
+  'n-tpl-new': el => { nNew(); nUseTemplate(el.dataset.i); }
+});
+
+/* ───────── Komut paleti (Ctrl+K) ───────── */
+let nCmdSel = 0, nCmdRows = [];
+function nGo(id) { ACTIONS['n-folder']({ dataset: { id } }); }
+function nPaletteItems() {
+  const items = [
+    { ic: IC.pen, label: 'Yeni not', run: () => nNew() },
+    { ic: IC.todo, label: 'Yapılacaklar', run: () => nGo('todos') },
+    { ic: IC.folder, label: 'Yeni klasör', run: () => nFolderCreate() },
+    { ic: IC.refresh, label: 'Yenile', run: () => nLoad() },
+    { ic: IC.trash, label: 'Silinenler', run: () => nGo('trash') },
+    { ic: IC.gear, label: 'Ayarlar', run: () => ACTIONS['notes-settings']?.() }
+  ];
+  if (typeof subFolders === 'function') for (const f of subFolders()) items.push({ ic: IC.folder, label: 'Klasör: ' + f.name, run: () => nGo(f.id) });
+  return items;
+}
+function nPaletteRender(q) {
+  const list = $('#ncmdList'); if (!list) return;
+  q = (q || '').trim().toLocaleLowerCase('tr');
+  const cmds = nPaletteItems().filter(i => !q || i.label.toLocaleLowerCase('tr').includes(q));
+  const notes = q ? N.all.filter(n => (n.title || '').toLocaleLowerCase('tr').includes(q) || (n.snippet || '').toLocaleLowerCase('tr').includes(q)).slice(0, 6) : [];
+  nCmdRows = [...cmds.map(c => ({ ...c, kind: 'cmd' })), ...notes.map(n => ({ ic: IC.notepad, label: n.title || 'Yeni not', id: n.id, kind: 'note' }))];
+  if (nCmdSel >= nCmdRows.length) nCmdSel = Math.max(0, nCmdRows.length - 1);
+  list.innerHTML = nCmdRows.length
+    ? nCmdRows.map((r, i) => `<button type="button" class="ncmd-row ${i === nCmdSel ? 'on' : ''}" data-i="${i}"><span class="ncmd-ic">${r.ic}</span><span class="ncmd-lb">${esc(r.label)}</span>${r.kind === 'note' ? '<span class="ncmd-tag">not</span>' : ''}</button>`).join('')
+    : '<div class="ncmd-empty">Sonuç yok</div>';
+  list.querySelector('.ncmd-row.on')?.scrollIntoView({ block: 'nearest' });
+}
+function nPaletteRun(i) {
+  const r = nCmdRows[i]; if (!r) return;
+  nPaletteClose();
+  if (r.kind === 'note') nOpen(r.id); else r.run();
+}
+function nPaletteClose() { document.getElementById('ncmd')?.remove(); }
+function nPalette() {
+  if (document.getElementById('ncmd')) return;
+  nCmdSel = 0;
+  const ov = document.createElement('div');
+  ov.id = 'ncmd'; ov.className = 'ncmd-over';
+  ov.innerHTML = `<div class="ncmd" role="dialog" aria-label="Komut paleti">
+    <div class="ncmd-in">${IC.search}<input id="ncmdQ" placeholder="Komut ara ya da not bul…" autocomplete="off" spellcheck="false"></div>
+    <div class="ncmd-list" id="ncmdList"></div>
+    <div class="ncmd-foot"><span><kbd>↑</kbd><kbd>↓</kbd> gez</span><span><kbd>↵</kbd> aç</span><span><kbd>esc</kbd> kapat</span></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const q = $('#ncmdQ');
+  nPaletteRender('');
+  setTimeout(() => q.focus(), 0);
+  q.addEventListener('input', () => { nCmdSel = 0; nPaletteRender(q.value); });
+  ov.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); nPaletteClose(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); nCmdSel = Math.min(nCmdSel + 1, nCmdRows.length - 1); nPaletteRender(q.value); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); nCmdSel = Math.max(nCmdSel - 1, 0); nPaletteRender(q.value); }
+    else if (e.key === 'Enter') { e.preventDefault(); nPaletteRun(nCmdSel); }
+  });
+  ov.addEventListener('mousedown', e => { if (e.target === ov) nPaletteClose(); });
+  ov.addEventListener('click', e => { const row = e.target.closest('.ncmd-row'); if (row) nPaletteRun(+row.dataset.i); });
+}
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    if (!window.SUHA_PROGRAM) return;
+    e.preventDefault();
+    document.getElementById('ncmd') ? nPaletteClose() : nPalette();
+  }
 });
 
 /* ═════════ Notlar 3 ═════════ */

@@ -72,3 +72,57 @@ body.notes-app { --nacc: #c2610c; -webkit-font-smoothing: antialiased; }
   .nbulk { margin: 8px 8px calc(10px + env(safe-area-inset-bottom)); }
   .nbulk .icon-btn { width: 40px; height: 40px; }
 }
+
+/* ───────── Karşılama paneli (not seçili değilken) ───────── */
+.nwelcome { display: grid; place-items: center; min-height: 100%; padding: 32px 24px; }
+.nwel-card { width: min(440px, 100%); animation: nIn .3s ease-out both; }
+.nwel-hi { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.nwel-hi svg { width: 40px; height: 40px; color: var(--nacc); opacity: .9; flex: none; stroke-width: 1.4; }
+.nwel-hi h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.nwel-hi p { margin: 2px 0 0; color: var(--fg-2); font-size: 14px; }
+.nwel-new { width: 100%; justify-content: center; font-size: 15px; padding: 12px; border-radius: 13px; }
+.nwel-sec { margin: 22px 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-3); }
+.nwel-tpls { display: flex; flex-wrap: wrap; gap: 8px; }
+.nwel-recent { display: flex; flex-direction: column; gap: 4px; }
+.nwel-r { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-2); color: inherit; font: inherit; cursor: pointer; transition: background .12s, border-color .12s; }
+.nwel-r:hover { background: var(--bg-3); border-color: color-mix(in srgb, var(--nacc) 40%, var(--line)); }
+.nwel-r.tinted { background: color-mix(in srgb, var(--nc) 20%, transparent); box-shadow: inset 3px 0 0 var(--nc); border-color: transparent; }
+.nwel-rt { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.nwel-rt .npin svg { width: 13px; height: 13px; color: var(--nacc); }
+.nwel-rd { flex: none; font-size: 12.5px; color: var(--fg-3); }
+.nwel-tip { margin-top: 24px; font-size: 12.5px; color: var(--fg-3); text-align: center; }
+
+/* Küçük klavye tuşu rozeti */
+kbd { display: inline-block; min-width: 1.2em; padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--bg-2); font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg-2); text-align: center; }
+
+/* ───────── Liste: sıkışık yoğunluk ───────── */
+.notes-list.dense .note-card { padding: 7px 14px; margin-bottom: 0; }
+.notes-list.dense .note-title { font-size: 14.5px; }
+.notes-list.dense .note-meta { margin-top: 1px; font-size: 12px; }
+.notes-list.dense .note-prev { opacity: .75; }
+.notes-list.dense .ncard-tags { margin-top: 3px; }
+.notes-list.dense .note-card + .note-card { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.notes-list.dense .note-card.tinted + .note-card.tinted { border-top: 0; }
+
+/* ───────── Editör cilası: araç çubuğu sabit, metin ortalı ───────── */
+.notes-app .ntools { position: sticky; top: 0; z-index: 3; background: var(--bg); }
+.note-view > * { margin-left: auto; margin-right: auto; }
+
+/* ───────── Komut paleti (Ctrl+K) ───────── */
+.ncmd-over { position: fixed; inset: 0; z-index: 2147483000; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: color-mix(in srgb, #000 38%, transparent); animation: nIn .12s ease-out both; }
+.ncmd { width: min(560px, 100%); max-height: 70vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.28); animation: nIn .16s cubic-bezier(.2,.8,.3,1) both; }
+.ncmd-in { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.ncmd-in svg { width: 19px; height: 19px; color: var(--fg-3); flex: none; }
+.ncmd-in input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: 16px; }
+.ncmd-list { overflow-y: auto; padding: 6px; }
+.ncmd-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.ncmd-row.on { background: color-mix(in srgb, var(--nacc) 15%, transparent); }
+.ncmd-ic { display: inline-grid; place-items: center; flex: none; color: var(--fg-2); }
+.ncmd-row.on .ncmd-ic { color: var(--nacc); }
+.ncmd-ic svg { width: 17px; height: 17px; }
+.ncmd-lb { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncmd-tag { flex: none; font-size: 11px; color: var(--fg-3); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+.ncmd-empty { padding: 26px; text-align: center; color: var(--fg-3); font-size: 14px; }
+.ncmd-foot { display: flex; gap: 16px; padding: 9px 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg-3); }
+.ncmd-foot kbd { margin-right: 3px; }
+@media (max-width: 700px) { .ncmd-over { padding: 8vh 10px 10px; } .ncmd-foot { display: none; } }

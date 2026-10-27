@@ -1,5 +1,5 @@
 // Uygulama dosyalarını önbelleğe alır; Gmail verilerine dokunmaz.
-const VERSION = 'mail-v129';
+const VERSION = 'mail-v130';
 const SHELL = ['./', 'index.html', 'basla.js', 'style.css', 'cam.css', 'koyu.css', 'settings.js', 'autocorrect.js', 'schedule.js', 'signature.js', 'snooze.js', 'undosend.js', 'phish.js', 'access.js', 'notify.js', 'select.js', 'ctxmenu.js', 'contacts.js', 'feedback.js', 'about.js', 'pdfconvert.js', 'files.js', 'keys.js', 'app.js', 'cal.js', 'mock.js', 'config.js',
   'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'icon-maskable.png',
   'notlar.html', 'notes-app.js', 'notes-plus.js', 'notes-plus.css', 'notlar.webmanifest', 'notlar-192.png', 'notlar-512.png', 'notlar-apple.png', 'notlar-maskable.png',
