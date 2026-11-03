@@ -1,23 +1,23 @@
 /* Suha Kasa — çelik tema (her temada koyu; fırçalanmış çelik zemin, yeşil kilit vurgusu) */
 :root{
-  --celik1:#3a3f47; --celik2:#272b31; --celik3:#1d2025;
-  --panel:#2e333b; --panel2:#363c45; --kenar:#444b55;
-  --yazi:#eef1f5; --soluk:#9aa3af; --soluk2:#6f7883;
+  /* Windows 11 · koyu Mica */
+  --celik1:#2d2d2d; --celik2:#242424; --celik3:#1b1b1b;
+  --panel:#272727; --panel2:#2f2f2f; --kenar:rgba(255,255,255,.08);
+  --yazi:#ffffff; --soluk:rgba(255,255,255,.73); --soluk2:rgba(255,255,255,.5);
   --yesil:#2fd36b; --yesil-koyu:#1f9b4e; --kirmizi:#e5544b; --sari:#f3c54a;
   --mavi:#4b9bff; --mor:#b794f6; --teal:#2fd3c0;
-  --golge:0 8px 30px rgba(0,0,0,.35);
-  --golge-yum:0 2px 10px rgba(0,0,0,.25);
-  --r:14px;
+  --vurgu:#4cc2ff; --vurgu-koyu:#2f98d4; --vurgu-fg:#002338;   /* Win11 sistem vurgusu */
+  --golge:0 8px 24px rgba(0,0,0,.4);
+  --golge-yum:0 2px 10px rgba(0,0,0,.3);
+  --r:8px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
   margin:0; color:var(--yazi); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  background:radial-gradient(120% 80% at 30% 0%, #454b54 0%, var(--celik2) 55%, var(--celik3) 100%);
+  background:linear-gradient(150deg,#262626,#1b1b1b);
   background-attachment:fixed; -webkit-user-select:none; user-select:none;
 }
-body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
-  background:repeating-linear-gradient(90deg,#fff 0 1px,transparent 1px 3px)}
 .gizli{display:none !important}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 input{font:inherit}
@@ -44,19 +44,21 @@ svg{display:block}
 
 label.alan{display:block;margin:14px 0 6px;color:var(--soluk);font-size:13px}
 input[type=text],input[type=password],input[type=search],textarea,select{
-  width:100%;background:var(--celik3);border:1px solid var(--kenar);border-radius:10px;
+  width:100%;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);
+  border-bottom:1.6px solid rgba(255,255,255,.4);border-radius:5px;
   color:var(--yazi);padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s}
-input:focus,textarea:focus,select:focus{border-color:var(--yesil-koyu);box-shadow:0 0 0 3px rgba(47,211,107,.12)}
+input:focus,textarea:focus,select:focus{border-bottom-color:var(--vurgu);box-shadow:none}
 textarea{resize:vertical;min-height:70px}
-input[type=range]{accent-color:var(--yesil)}
+input[type=range]{accent-color:var(--vurgu)}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
   background:var(--panel2);border:1px solid var(--kenar);border-radius:11px;padding:11px 16px;font-weight:600;
   transition:background .15s,filter .15s,transform .1s}
 .btn:hover{background:#3f4651}
 .btn:active{transform:scale(.98)}
-.btn.ana{background:linear-gradient(180deg,var(--yesil) 0%,var(--yesil-koyu) 100%);border-color:var(--yesil-koyu);color:#05270f}
-.btn.ana:hover{filter:brightness(1.07)}
+.btn{border-bottom-color:rgba(0,0,0,.3)}
+.btn.ana{background:var(--vurgu);border-color:var(--vurgu-koyu);color:var(--vurgu-fg)}
+.btn.ana:hover{background:#63cbff;filter:none}
 .btn.tehlike{background:#3a2626;border-color:#6b3a37;color:#ffb4ae}
 .btn.tehlike:hover{background:#45292a}
 .btn.tam{width:100%}
@@ -106,7 +108,7 @@ input[type=range]{accent-color:var(--yesil)}
 .cip{padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--kenar);
   font-size:13px;color:var(--soluk);transition:background .15s,color .15s,border-color .15s}
 .cip:hover{color:var(--yazi)}
-.cip.aktif{background:var(--yesil-koyu);border-color:var(--yesil-koyu);color:#eafff1}
+.cip.aktif{background:var(--vurgu);border-color:var(--vurgu);color:var(--vurgu-fg)}
 
 /* ── modal ── */
 .ortu{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px;z-index:50;
@@ -130,7 +132,7 @@ input[type=range]{accent-color:var(--yesil)}
 .vr .vact{display:flex;gap:2px;flex:none}
 .ikonbtn.sm{width:32px;height:32px}
 .ikonbtn.sm svg{width:17px;height:17px}
-.kopyala:hover{color:var(--yesil)}
+.kopyala:hover{color:var(--vurgu)}
 .yildizBtn{color:var(--soluk)}
 .yildizBtn.on{color:var(--sari)}
 
@@ -138,9 +140,9 @@ input[type=range]{accent-color:var(--yesil)}
 .totp{display:flex;align-items:center;gap:10px;background:var(--celik3);border:1px solid var(--kenar);
   border-radius:11px;padding:10px 12px;margin-top:10px}
 .totp .etk{font-size:12px;color:var(--soluk)}
-.totp .kod{font-family:ui-monospace,monospace;font-size:22px;letter-spacing:3px;color:var(--yesil)}
+.totp .kod{font-family:ui-monospace,monospace;font-size:22px;letter-spacing:3px;color:var(--vurgu)}
 .totp .halka{width:22px;height:22px;border-radius:50%;flex:none;
-  background:conic-gradient(var(--yesil) var(--a,0%),var(--kenar) 0);
+  background:conic-gradient(var(--vurgu) var(--a,0%),var(--kenar) 0);
   -webkit-mask:radial-gradient(farthest-side,transparent 60%,#000 61%);mask:radial-gradient(farthest-side,transparent 60%,#000 61%)}
 
 /* toast */
@@ -184,4 +186,11 @@ input[type=range]{accent-color:var(--yesil)}
 .panelBos{display:grid;place-items:center;text-align:center;color:var(--soluk)}
 .panelBos .bikon{width:64px;height:64px;opacity:.45;margin:0 auto 14px}
 /* geniş modda liste satırı seçili */
-.satir.secili{border-color:var(--yesil-koyu);background:var(--panel2);box-shadow:0 0 0 2px rgba(47,211,107,.15)}
+.satir.secili{border-color:var(--vurgu);background:var(--panel2);box-shadow:0 0 0 2px rgba(76,194,255,.2)}
+
+/* ── Windows 11 ince kaydırma çubuğu ── */
+*{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border:3px solid transparent;background-clip:padding-box;border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.45);background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
