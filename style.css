@@ -674,19 +674,18 @@ input.note-h::placeholder { color: var(--fg-3); }
 .theme-prev b { position: absolute; top: 12%; bottom: 12%; border-radius: 5px; }
 .theme-prev b:nth-of-type(1) { left: 33%; width: 26%; }
 .theme-prev b:nth-of-type(2) { left: 63%; right: 7%; }
-.tp-light { background: radial-gradient(60% 70% at 15% 20%, #9aa2ae, transparent 70%), linear-gradient(135deg, #eef0f3, #b3b9c2); }
-.tp-light i { background: rgba(32,35,40,.7); }
-.tp-light b { background: rgba(255,255,255,.6); box-shadow: inset 0 0 0 1px rgba(255,255,255,.8); }
-.tp-dark { background: radial-gradient(60% 70% at 15% 20%, #4a505a, transparent 70%), linear-gradient(135deg, #2a2d33, #121316); }
-.tp-dark i { background: rgba(8,9,11,.7); }
-.tp-dark b { background: rgba(255,255,255,.09); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
-.tp-auto { background: linear-gradient(135deg, #e6e8ec 50%, #1a1c20 50%); }
-.tp-auto i { background: #3a3e45; }
-.tp-auto b:nth-of-type(1) { background: rgba(255,255,255,.75); }
-.tp-auto b:nth-of-type(2) { background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
-.tp-flat { background: #e8eaed; }
-.tp-flat i { background: #26282c; }
-.tp-flat b { background: #f6f7f8; }
+.tp-light { background: #f3f3f3; }
+.tp-light i { background: #e8e8e8; }
+.tp-light b { background: #ffffff; box-shadow: inset 0 0 0 1px #e2e2e2; }
+.tp-light b:nth-of-type(1) { background: #0067c0; box-shadow: none; }
+.tp-dark { background: #202020; }
+.tp-dark i { background: #1a1a1a; }
+.tp-dark b { background: #2b2b2b; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.tp-dark b:nth-of-type(1) { background: #4cc2ff; box-shadow: none; }
+.tp-auto { background: linear-gradient(135deg, #f3f3f3 50%, #202020 50%); }
+.tp-auto i { background: #8a8a8a; }
+.tp-auto b:nth-of-type(1) { background: #0067c0; }
+.tp-auto b:nth-of-type(2) { background: #2b2b2b; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
 @media (max-width: 560px) {
   .theme-grid { grid-template-columns: repeat(2, 1fr); }
   .set-row { flex-wrap: wrap; }
@@ -1465,3 +1464,76 @@ html[data-theme="dark"] body.notes-app .btn.primary { background: #fcd34d; borde
   padding: 13px 26px; border-radius: 13px; font-weight: 650; box-shadow: 0 6px 20px rgba(47,111,224,.4); }
 .kapi-btn:hover { filter: brightness(1.07); }
 .kapi-alt { font-size: 12px; color: #6f7883; margin-top: 28px; }
+
+/* ═════════════════ Windows 11 · Fluent görünüm ═════════════════
+   Ortak tasarım katmanı. Tokenları ve çekirdek kontrolleri Windows 11 (Fluent)
+   diline uyarlar: Mica zemin, akıcı düğmeler, mavi vurgu, 8px köşeler. */
+:root {
+  --bg: #f3f3f3;            /* Mica temel */
+  --bg-2: #ffffff;         /* kart / katman */
+  --bg-3: #ededed;         /* ince dolgu / hover */
+  --line: #e6e6e6;         /* ayraç */
+  --fg: #1a1a1a;
+  --fg-2: #5a5a5a;
+  --fg-3: #8a8a8a;
+  --accent: #0067c0;       /* Windows mavisi */
+  --accent-fg: #ffffff;
+  --accent-soft: #eaf2fb;  /* seçili öğe için açık mavi */
+  --sel: #ededed;
+  --danger: #c42b1c;
+  --silver: linear-gradient(180deg, #0a7ad4, #0067c0);
+  --silver-line: #005ba6;
+  --shadow: 0 8px 16px rgba(0,0,0,.14);
+  --radius: 8px;
+}
+body { font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+
+/* Kenar çubuğu: Win11'de açık gezinme bölmesi (grafit değil) */
+.sidebar {
+  --bg: #f9f9f9; --bg-3: #ededed; --line: #e6e6e6;
+  --fg: #1a1a1a; --fg-2: #5a5a5a; --fg-3: #8a8a8a; --accent-soft: #eaf2fb;
+  background: #f9f9f9; color: var(--fg); border-right-color: #e6e6e6 !important;
+}
+/* Seçili gezinme öğesi: sol mavi gösterge + hafif dolgu (Win11 nav) */
+.nav-item.active { position: relative; background: var(--bg-3); color: var(--fg); }
+.nav-item.active::before { content: ""; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); width: 3px; height: 16px; border-radius: 3px; background: var(--accent); }
+
+/* Akıcı düğmeler */
+.btn { background: #fbfbfb; border: 1px solid rgba(0,0,0,.07); border-bottom-color: rgba(0,0,0,.16); border-radius: 5px; box-shadow: none; }
+.btn:hover { background: #f2f2f2; }
+.btn:active { background: #ebebeb; transform: none; }
+.btn.primary, .fab { background: var(--accent); border: 1px solid #005ba6; color: #fff; box-shadow: none; }
+.btn.primary:hover, .fab:hover { background: #1a78c8; filter: none; }
+.btn.primary:active, .fab:active { background: #2a82cc; }
+.btn.danger { background: var(--danger); border-color: #a82414; }
+.icon-btn { border-radius: 6px; }
+.icon-btn:hover { background: rgba(0,0,0,.05); }
+.icon-btn.on { color: var(--accent); }
+
+/* Metin alanı / arama (Fluent text field: altta vurgu çizgisi) */
+.searchbox { background: #fdfdfd; border: 1px solid rgba(0,0,0,.08); border-bottom: 1.6px solid rgba(0,0,0,.42); border-radius: 5px; }
+.searchbox:focus-within { border-bottom-color: var(--accent); }
+
+/* Liste satırı seçimi: ince dolgu + sol mavi gösterge, yuvarak köşe */
+.row { border-radius: 0; }
+.row.sel { background: var(--bg-3); position: relative; }
+.row.sel::after { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--accent); }
+
+/* Kart / sayfa paneli */
+.card { border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+
+/* İnce Fluent kaydırma çubuğu */
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.28) transparent; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.26); border: 3px solid transparent; background-clip: padding-box; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.42); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Odak halkası (klavye) */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Uygulama vurguları tek sistem mavisine gelsin (Win11 tek vurgu kullanır) */
+body.notes-app { --nacc: #0067c0; --accent: #0067c0; --accent-fg: #fff; --accent-soft: #eaf2fb; --sel: #ededed; --kagit: #ffffff; }
+body.mail-app { --accent: #0067c0; --accent-fg: #fff; --accent-soft: #eaf2fb; --sel: #ededed; }
+body.notes-app .nsec { color: var(--fg-3); }
+body.notes-app .notes-list .note-card.sel { outline: 2px solid var(--accent); }

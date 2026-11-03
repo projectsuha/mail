@@ -1,10 +1,9 @@
 /* ───────────── Ayarlar ───────────── */
 
 const THEMES = [
-  ['light', 'Açık cam', 'Gümüş zemin, buzlu cam paneller'],
-  ['dark', 'Koyu cam', 'Gece zemini, füme cam paneller'],
-  ['auto', 'Otomatik', 'Cihaz koyu moddaysa koyu, değilse açık'],
-  ['flat', 'Düz', 'Camsız, sade gümüş-gri']
+  ['light', 'Açık', 'Windows 11 · aydınlık'],
+  ['dark', 'Koyu', 'Windows 11 · karanlık'],
+  ['auto', 'Otomatik', 'Cihazına göre açık ya da koyu']
 ];
 
 function openSettings() {

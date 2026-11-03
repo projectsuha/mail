@@ -1,5 +1,5 @@
 /* Notlar · ek özellikler ve görsel cila (19 Ekim 2026) */
-body.notes-app { --nacc: #c2610c; -webkit-font-smoothing: antialiased; }
+body.notes-app { --nacc: #0067c0; -webkit-font-smoothing: antialiased; }
 /* Kilit */
 .nlock-i, .nlock-b { display: inline-flex; vertical-align: -2px; margin-right: 5px; color: var(--nacc); }
 .nlock-i svg, .nlock-b svg { width: 15px; height: 15px; }

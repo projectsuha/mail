@@ -14,7 +14,7 @@
 })();
 function applyTheme(t) {
   var cam = document.getElementById('css-cam'), koyu = document.getElementById('css-koyu');
-  cam.media = t === 'flat' ? 'not all' : 'all';
+  cam.media = 'not all';   // eski gümüş/cam görünüm emekli; Win11 Fluent kullanılıyor
   koyu.media = t === 'dark' ? 'all' : t === 'auto' ? '(prefers-color-scheme: dark)' : 'not all';
   document.documentElement.dataset.theme = t;
   simgeTema(t);
