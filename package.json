@@ -1,0 +1,35 @@
+{
+  "name": "suha-notlar",
+  "productName": "Suha Notlar",
+  "version": "0.10.0",
+  "description": "Suha Notlar — Gmail'deki notların için Windows programı",
+  "author": "Sinan Erdoğan",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.snnerdogan98.notlar",
+    "productName": "Suha Notlar",
+    "copyright": "Sinan Erdoğan",
+    "files": ["main.js", "preload.js", "simge/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "simge/notlar.ico" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Suha Notlar",
+      "installerLanguages": ["tr_TR"],
+      "language": "1055",
+      "artifactName": "Suha-Notlar-Kurulum-${version}.exe"
+    }
+  }
+}
