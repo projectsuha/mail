@@ -192,6 +192,7 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 
 /* ═════════ Başlangıç ve pano listesi ═════════ */
 start = async function () {
+  if (!window.SUHA_PROGRAM) return window.suhaKapi();
   try {
     let email = '';
     if (YEREL) {   // giriş yok: doğrudan panolar

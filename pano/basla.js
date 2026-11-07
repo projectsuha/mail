@@ -14,7 +14,7 @@
 })();
 function applyTheme(t) {
   var cam = document.getElementById('css-cam'), koyu = document.getElementById('css-koyu');
-  cam.media = t === 'flat' ? 'not all' : 'all';
+  cam.media = 'not all';   // eski gümüş/cam görünüm emekli; Win11 Fluent kullanılıyor
   koyu.media = t === 'dark' ? 'all' : t === 'auto' ? '(prefers-color-scheme: dark)' : 'not all';
   document.documentElement.dataset.theme = t;
   simgeTema(t);
@@ -28,3 +28,37 @@ function simgeTema(t) {
 }
 try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { simgeTema(document.documentElement.dataset.theme); }); } catch (e) {}
 try { applyTheme(JSON.parse(localStorage.getItem('theme')) || 'light'); } catch (e) { applyTheme('light'); }
+
+/* Program kapısı: uygulama yalnızca Windows programı (exe) ya da Android uygulaması (TWA)
+   içinde açılır. Düz tarayıcıda açılınca "programı indir" ekranı gösterilir. */
+(function () {
+  function twa() {
+    try {
+      if (document.referrer.indexOf('android-app://') === 0) sessionStorage.setItem('suhaTWA', '1');
+      return sessionStorage.getItem('suhaTWA') === '1';
+    } catch (e) { return false; }
+  }
+  window.SUHA_PROGRAM = !!(window.mailDesktop || window.kasaMasaustu || window.panoDesktop || window.suhaDesktop) || twa();
+})();
+window.suhaKapi = function () {
+  if (document.getElementById('suha-kapi')) return;   // yalnız bir kez
+  var ad = (document.title || 'Suha').trim();
+  var ic = (document.querySelector('link[rel="icon"]') || {}).href || '';
+  document.documentElement.setAttribute('data-kapi', '1');
+  var d = document.createElement('div');
+  d.id = 'suha-kapi'; d.className = 'kapi-over';
+  d.innerHTML =
+    '<div class="kapi">' +
+      (ic ? '<img class="kapi-logo" src="' + ic + '" alt="">' : '') +
+      '<h1>' + ad + '</h1>' +
+      '<p>Bu uygulama artık <b>program</b> olarak kullanılıyor; tarayıcıdan açılmıyor. Bilgisayarda Windows programını kur, telefonda uygulamayı yükle.</p>' +
+      '<a class="kapi-btn" href="https://github.com/projectsuha/mail/releases">Programı indir</a>' +
+      '<p class="kapi-alt">Bir Suha projesi · Sinan Erdoğan ve Claude</p>' +
+    '</div>';
+  (document.body || document.documentElement).appendChild(d);
+};
+/* Tüm uygulamaları tek yerden kapsa: program değilse açılışta kapıyı göster */
+if (!window.SUHA_PROGRAM) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.suhaKapi);
+  else window.suhaKapi();
+}
