@@ -72,8 +72,7 @@ html[data-theme="dark"] body.borsa-app { --up: #4ade80; --down: #f87171; --up-so
 .br-cipler { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 .br-cip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-2); font: inherit; font-size: 13.5px; cursor: pointer; }
 .br-cip span { font-size: 12px; color: var(--fg-3); }
-.br-cip.on { background: var(--fg); color: var(--bg-2); border-color: var(--fg); }
-html:not([data-theme="dark"]) .br-cip.on { background: #26282c; color: #f1f3f6; border-color: #26282c; }
+.br-cip.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .br-cip.on span { color: inherit; opacity: .7; }
 .br-cip.yeni { border-style: dashed; }
 .br-cip svg { width: 14px; height: 14px; }
@@ -158,7 +157,7 @@ html:not([data-theme="dark"]) .br-cip.on { background: #26282c; color: #f1f3f6; 
 .br-p-ozet span { font-size: 12.5px; color: var(--fg-3); }
 .br-p-ozet b { font-size: 19px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .br-p-ozet em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--fg-2); }
-.br-p-ana { background: linear-gradient(140deg, #2d3036, #1d1f23) !important; border-color: #2d3036 !important; color: #f1f3f6; }
+.br-p-ana { background: linear-gradient(140deg, var(--accent), #004e96) !important; border-color: transparent !important; color: #fff; }
 .br-p-ana span, .br-p-ana em { color: #a9afb8 !important; }
 .br-p-ana b { font-size: 27px !important; letter-spacing: -.02em; }
 .br-psekme { margin-bottom: 14px; }
@@ -297,31 +296,16 @@ html[data-theme="light"] .br-pop { background: rgba(246,247,248,.94); }
 .br-mob-kars { display: none !important; }
 @media (max-width: 800px) { .br-mob-kars { display: inline-flex !important; } }
 
-/* ───── Karakter: terminal (her temada siyah, kehribar, kayan fiyat bandı) ───── */
-html:has(body.borsa-app) { background: linear-gradient(180deg, #0b0e12, #06080a) fixed !important; }
-body.borsa-app { background: transparent !important; --up: #22c55e; --down: #ef4444; --up-soft: rgba(34,197,94,.15); --down-soft: rgba(239,68,68,.15);
-  --bg-2: rgba(255,255,255,.035); --bg: rgba(255,255,255,.05); --bg-3: rgba(255,255,255,.08); --line: rgba(255,255,255,.09); --fg: #e8eaed; --fg-2: #b6bcc4; --fg-3: #7d848d;
-  --sel: rgba(245,165,36,.14); --accent: #f5a524; --accent-fg: #1a1205; --accent-soft: rgba(245,165,36,.15); color: #e8eaed; color-scheme: dark; }
-body.borsa-app .sidebar { background: rgba(255,255,255,.02) !important; border-color: rgba(255,255,255,.07) !important; }
-body.borsa-app .brand-mark { background: #f5a524; border-color: #f5a524; color: #1a1205; box-shadow: none; }
-body.borsa-app .br-top { border-color: rgba(245,165,36,.25); }
-body.borsa-app .searchbox { background: rgba(255,255,255,.05) !important; border-color: rgba(255,255,255,.1) !important; color: #b6bcc4; }
-body.borsa-app .br-kart, body.borsa-app .br-blok { background: #0f1318 !important; border: 1px solid #1e252e !important; border-radius: 6px !important; box-shadow: none !important; }
-body.borsa-app .br-kart-ust b { color: #f5a524; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .04em; }
-body.borsa-app .br-kart-fiyat, body.borsa-app [data-qf], body.borsa-app .br-deg { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-body.borsa-app .br-h1 h2 { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; color: #f5a524; font-size: 20px; }
-body.borsa-app .br-blok h3 { text-transform: uppercase; letter-spacing: .06em; font-size: 13px; color: #b6bcc4; }
-body.borsa-app .seg { background: rgba(255,255,255,.06); } body.borsa-app .seg button { color: #9aa1aa; } body.borsa-app .seg button.on { background: #f5a524; color: #1a1205; }
-body.borsa-app .btn { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: #e8eaed; }
-body.borsa-app .btn.primary { background: #f5a524; border-color: #f5a524; color: #1a1205; }
-body.borsa-app .nav-item.active { background: rgba(245,165,36,.14); color: #f5a524; }
-@media (max-width: 800px) { body.borsa-app .br-tabbar { background: rgba(8,10,13,.94) !important; border-color: rgba(255,255,255,.08) !important; } body.borsa-app .br-tabbar button.on { color: #f5a524; } }
-.br-bant { overflow: hidden; border-bottom: 1px solid #1e252e; background: #080a0d; white-space: nowrap; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+/* ───── Windows 11: Borsa paylaşılan temayı izler (açık/koyu Mica, mavi vurgu) ─────
+   Terminal (siyah + kehribar) karakter skini kaldırıldı; artış/azalış yeşil/kırmızı korundu. */
+body.borsa-app .br-kart-ust b { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+body.borsa-app .br-kart-fiyat, body.borsa-app [data-qf], body.borsa-app .br-deg { font-variant-numeric: tabular-nums; }
+body.borsa-app .br-h1 h2 { letter-spacing: -.01em; font-size: 20px; }
+/* Fiyat bandı (kayan) — Win11 nötr */
+.br-bant { overflow: hidden; border-bottom: 1px solid var(--line); background: var(--bg-2); white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 12.5px; }
 .br-bant-ic { display: inline-flex; animation: brbant 60s linear infinite; padding: 6px 0; }
 .br-bant:hover .br-bant-ic { animation-play-state: paused; }
-.br-bant-o { display: inline-flex; gap: 6px; padding: 0 16px; border-right: 1px solid #1e252e; color: #c9ced5; }
-.br-bant-o b { color: #f5a524; font-weight: 600; }
+.br-bant-o { display: inline-flex; gap: 6px; padding: 0 16px; border-right: 1px solid var(--line); color: var(--fg-2); }
+.br-bant-o b { color: var(--fg); font-weight: 600; }
 @keyframes brbant { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .br-bant-ic { animation: none; } .br-bant { overflow-x: auto; } }
-body.borsa-app .br-isi-k { color: #f1f3f5; border-color: #06080a; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-body.borsa-app .listpane, body.borsa-app .br-main { background: transparent !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-color: rgba(255,255,255,.07) !important; }
