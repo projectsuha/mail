@@ -1,0 +1,24 @@
+{
+  "name": "suha-hesap",
+  "productName": "Suha Hesap",
+  "version": "0.10.0",
+  "description": "Suha Hesap — çevrimdışı hesap makinesi",
+  "author": "Sinan Erdoğan",
+  "private": true,
+  "main": "main.js",
+  "scripts": { "start": "electron .", "dist": "electron-builder --win nsis --publish never" },
+  "devDependencies": { "electron": "^44.0.0", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "com.snnerdogan98.hesap",
+    "productName": "Suha Hesap",
+    "copyright": "Sinan Erdoğan",
+    "files": ["main.js", "preload.js", "hesap/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "hesap/simge/hesap.ico" },
+    "nsis": {
+      "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true, "createDesktopShortcut": true, "shortcutName": "Suha Hesap",
+      "installerLanguages": ["tr_TR"], "language": "1055",
+      "artifactName": "Suha-Hesap-Kurulum-${version}.exe"
+    }
+  }
+}

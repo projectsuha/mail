@@ -1,0 +1,82 @@
+/* ═══ Windows 11 · koyu Mica ═══
+   Fluent karanlık tema: füme değil, Win11 nötr koyu zemin; açık-mavi vurgu. */
+:root {
+  --bg: rgba(255,255,255,.04);      /* ince kontrol dolgusu */
+  --bg-2: #2b2b2b;                  /* kart / katman */
+  --bg-3: rgba(255,255,255,.08);    /* hover dolgu */
+  --line: rgba(255,255,255,.08);
+  --fg: #ffffff; --fg-2: rgba(255,255,255,.73); --fg-3: rgba(255,255,255,.5);
+  --sel: rgba(255,255,255,.08);
+  --accent: #4cc2ff; --accent-fg: #002338; --accent-soft: rgba(76,194,255,.16);
+  --danger: #e5484d;
+  --silver: linear-gradient(180deg, #4cc2ff, #3bb0ef); --silver-line: #2f98d4;
+  color-scheme: dark;
+}
+html { background: linear-gradient(150deg, #262626, #1b1b1b) fixed !important; }
+body { background: transparent !important; color: var(--fg); }
+@media (min-width: 801px) {
+  .listpane, .reader, .calpane { background: #272727 !important; border-color: rgba(255,255,255,.07) !important;
+    box-shadow: none !important; }
+  .sidebar { background: #1f1f1f !important; border-color: rgba(255,255,255,.06) !important; }
+}
+@media (max-width: 800px) {
+  html { background: #1f1f1f fixed !important; }
+  .listpane, .reader, .calpane { background: #202020 !important; }
+}
+.sidebar { --bg: #1f1f1f; --bg-3: rgba(255,255,255,.08); --line: rgba(255,255,255,.07);
+  --fg: #ffffff; --fg-2: rgba(255,255,255,.73); --fg-3: rgba(255,255,255,.5); --accent-soft: rgba(76,194,255,.16); }
+
+/* Satırlar */
+.row { border-bottom-color: rgba(255,255,255,.06) !important; }
+.row:hover { background: rgba(255,255,255,.05) !important; }
+.row.sel { background: rgba(255,255,255,.08) !important; }
+.row.sel::after { background: var(--accent); }
+.row.unread::before { background: var(--accent); }
+
+/* Kontroller — Fluent karanlık */
+.btn { background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.09); border-bottom-color: rgba(0,0,0,.3); color: var(--fg); }
+.btn:hover { background: rgba(255,255,255,.09); }
+.btn.primary, .fab { background: var(--accent); border-color: #2f98d4; color: var(--accent-fg); }
+.btn.primary:hover, .fab:hover { background: #63cbff; }
+.searchbox { background: rgba(255,255,255,.045) !important; border-color: rgba(255,255,255,.09) !important; border-bottom-color: rgba(255,255,255,.4) !important; }
+.searchbox:focus-within { border-bottom-color: var(--accent) !important; }
+.icon-btn:hover { background: rgba(255,255,255,.08); }
+.msg-body { border-color: rgba(255,255,255,.08) !important; border-radius: 8px; }
+.mailframe { filter: brightness(.94); }
+.sheet, .color-pop { background: #2b2b2b !important; border-color: rgba(255,255,255,.1) !important; color: var(--fg); }
+.sheet input, .sheet select, .sheet textarea { color: var(--fg); }
+.card { background: #2b2b2b; border-color: rgba(255,255,255,.08); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.45); background-clip: padding-box; }
+
+/* Vurgulu küçük öğeler: bugün / seçili filtre → açık-mavi */
+.mday.today .mnum, .wk-dh.today b, .inv-date, .cl-new { background: var(--accent) !important; color: var(--accent-fg) !important; }
+.ds-chip span { background: var(--accent); color: var(--accent-fg); }
+.note-card.sel { background: rgba(255,255,255,.08); }
+.seg button.on { background: rgba(255,255,255,.12); color: var(--fg); }
+.tchip { box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.switch i { background: #f1f3f6; }
+.switch.on i { background: var(--accent-fg); }
+.theme-prev { box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.sn-chip { background: rgba(76,194,255,.16); color: #bfe6ff; border-color: rgba(76,194,255,.28); }
+.sn-chip.back { background: rgba(255,190,80,.16); color: #f2cf8a; border-color: rgba(255,190,80,.28); }
+.sched-pop { background: #2b2b2b !important; border-color: rgba(255,255,255,.12) !important; color: var(--fg); }
+.upd-card { background: rgba(255,190,80,.12); color: #f2cf8a; }
+.phish.danger { background: rgba(229,57,53,.14); border-color: rgba(229,57,53,.4); color: #ffcdd2; }
+.phish.warn { background: rgba(255,190,80,.12); border-color: rgba(255,190,80,.35); color: #f2cf8a; }
+.phish .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
+.ph-mark { color: #ff6b6b; }
+.row.picked .row-check { color: var(--accent-fg); }
+.gb-tur.h { background: rgba(230,80,60,.18); color: #f3a59a; } .gb-tur.o { background: rgba(90,140,230,.18); color: #a9c4f2; }
+.gb-filters button.on { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+html.yon-html { --yon-bar: rgba(31,31,31,.92); --yon-card: rgba(255,255,255,.05); --yon-bg: #1b1b1b; }
+@media (max-width: 700px) { body.yonetici .yon-sheet .sheet-head, body.yonetici .yon-tabs { border-color: rgba(255,255,255,.08); } }
+.ku-chip.w { background: rgba(70,180,100,.18); color: #9fdcb0; } .ku-chip.k { background: rgba(230,80,60,.18); color: #f3a59a; } .ku-chip.me { background: rgba(90,140,230,.18); color: #a9c4f2; } .ku-chip.no { background: var(--accent); color: var(--accent-fg); }
+
+/* Uygulama vurgularını da tek sistem açık-mavisine çek (Win11) */
+html[data-theme="dark"] body.notes-app, html[data-theme="dark"] body.mail-app { --accent: #4cc2ff; --accent-fg: #002338; --accent-soft: rgba(76,194,255,.16); --sel: rgba(255,255,255,.08); --nacc: #4cc2ff; --kagit: #272727; }
+html[data-theme="dark"] body.notes-app .nsec { color: var(--fg-3); }
+html[data-theme="dark"] body.notes-app .notes-list .note-card.sel { outline-color: var(--accent); }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] body.notes-app, html[data-theme="auto"] body.mail-app { --accent: #4cc2ff; --accent-fg: #002338; --accent-soft: rgba(76,194,255,.16); --sel: rgba(255,255,255,.08); --nacc: #4cc2ff; --kagit: #272727; }
+}
