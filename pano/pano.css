@@ -273,22 +273,8 @@ html[data-theme="dark"] .pt { color: #e6e8eb; }
   .pb-zoom .pb-div, .pb-zoom [data-action="p-fit"] { display: none; }
 }
 
-/* ───── Karakter: mavi çizim kâğıdı (liste ekranı; tuval olduğu gibi kalır) ───── */
-html:has(body.pano-app:not(.pano-open)) { background:
-  repeating-linear-gradient(0deg, rgba(255,255,255,.16) 0 1px, transparent 1px 100px), repeating-linear-gradient(90deg, rgba(255,255,255,.16) 0 1px, transparent 1px 100px),
-  repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 20px), repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 20px),
-  radial-gradient(70% 60% at 50% 0%, #2a64a8, transparent 75%), #1b4a85 fixed !important; }
-body.pano-app:not(.pano-open) { background: transparent !important; }
-.pano-app .pl-wrap { --bg-2: rgba(255,255,255,.07); --bg: rgba(255,255,255,.1); --bg-3: rgba(255,255,255,.14); --line: rgba(255,255,255,.4); --fg: #fff; --fg-2: rgba(255,255,255,.85); --fg-3: rgba(255,255,255,.65); color: #fff; }
-.pano-app .pl-wrap .brand-mark { background: #fff; border-color: #fff; color: #1b4a85; box-shadow: none; }
-.pano-app .pl-wrap .icon-btn { color: #fff; }
-.pano-app .pl-wrap .btn, .pano-app .pl-wrap .btn.primary { background: #fff; border-color: #fff; color: #1b4a85; }
-.pano-app .pl-wrap .searchbox, .pano-app .pl-wrap input { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.35) !important; color: #fff; }
-.pano-app .pl-wrap input::placeholder { color: rgba(255,255,255,.65); }
-.pano-app .pl-card { background: rgba(16, 50, 95, .55) !important; border: 1.5px solid rgba(255,255,255,.55) !important; border-radius: 4px !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.pano-app .pl-card:hover { border-color: #fff !important; }
-.pano-app .pl-thumb { background: repeating-linear-gradient(0deg, rgba(255,255,255,.08) 0 1px, transparent 1px 12px), repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 12px) !important; border-bottom: 1.5px solid rgba(255,255,255,.4) !important; color: rgba(255,255,255,.8); }
-.pano-app .pl-thumb img { background: #fff; }
+/* ───── Galeri: Windows 11 nötr zemin (paylaşılan tokenlar) ───── */
+.pano-app .pl-thumb { background: var(--pano-bg); border-bottom: 1px solid var(--line); color: var(--fg-3); }
 .pano-app .pl-new { border-style: dashed !important; background: transparent !important; }
 .pano-app .pl-meta b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .01em; }
 .pano-app .pl-head h1 { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; font-size: 21px; }
@@ -343,14 +329,15 @@ html[data-theme="dark"] .pt { color: #e6e8eb; }
 .pano-app .pl-meta b { font-weight: 650; letter-spacing: 0; }
 .pano-app .pl-meta span { font-variant-numeric: tabular-nums; }
 /* Liste: yuvarlak, hafif, canlı */
-.pano-app .pl-card { border-radius: 14px !important; border-width: 1px !important; border-color: rgba(255,255,255,.4) !important; background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(16,50,95,.55)) !important;
+.pano-app .pl-card { border-radius: 10px !important; border: 1px solid var(--line) !important; background: var(--bg-2) !important; box-shadow: 0 1px 2px rgba(0,0,0,.04) !important;
   transition: transform .18s cubic-bezier(.2,.8,.3,1), border-color .18s, box-shadow .18s; }
-.pano-app .pl-card:hover { transform: translateY(-3px); border-color: #fff !important; box-shadow: 0 14px 30px -10px rgba(0,20,60,.55) !important; }
+.pano-app .pl-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px -8px rgba(0,0,0,.2) !important; }
 .pano-app .pl-card:active { transform: scale(.985); }
+.pano-app .pl-new { background: transparent !important; box-shadow: none !important; }
 .pano-app .pl-thumb { border-radius: 0; }
 .pano-app .pl-head h1 { letter-spacing: .14em; font-size: 19px; }
-.pano-app .pl-wrap .searchbox { border-radius: 14px; }
-.pano-app .pl-wrap .btn.primary { border-radius: 14px; font-weight: 650; box-shadow: 0 6px 16px -6px rgba(0,20,60,.6); }
+.pano-app .pl-wrap .searchbox { border-radius: 5px; }
+.pano-app .pl-wrap .btn.primary { border-radius: 5px; font-weight: 650; }
 /* Hareket */
 @keyframes pIn { from { opacity: 0; translate: 0 8px; scale: .97; } to { opacity: 1; translate: 0 0; scale: 1; } }
 @keyframes pInL { from { opacity: 0; translate: -10px 0; } to { opacity: 1; translate: 0 0; } }
