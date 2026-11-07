@@ -16,8 +16,7 @@ body.hs-app { --hs-vurgu: #3d5afe; --hs-op: #2b2f36; }
 .hs-kart { padding: 18px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); box-sizing: border-box; min-width: 0; }
 .hs-bos { text-align: center; padding: 18px 8px; margin: 0; }
 .hs-cip { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--fg-2); font: inherit; font-size: 13px; cursor: pointer; }
-.hs-cip.on { background: #26282c; color: #f3f4f6; border-color: #26282c; }
-html[data-theme="dark"] .hs-cip.on { background: #e8eaed; color: #1c1f23; border-color: #e8eaed; }
+.hs-cip.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 
 /* Makine */
 .hs-hesap { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 22px; align-items: start; justify-content: center; }
@@ -41,12 +40,11 @@ html[data-theme="dark"] .hs-cip.on { background: #e8eaed; color: #1c1f23; border
 .hs-tuslar .t:hover { background: var(--bg-3); }
 .hs-tuslar .t:active, .hs-tuslar .t.bas { transform: scale(.95); }
 .hs-tuslar .t.fn { color: var(--fg-2); font-size: 19px; background: var(--bg-3); }
-.hs-tuslar .t.op { background: var(--hs-op); color: #f3f4f6; border-color: var(--hs-op); font-size: 25px; }
-.hs-tuslar .t.op:hover { background: #3a3f48; }
-.hs-tuslar .t.esit { background: var(--hs-vurgu); border-color: var(--hs-vurgu); color: #fff; font-size: 26px; }
-.hs-tuslar .t.esit:hover { background: #3249d6; }
+.hs-tuslar .t.op { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-size: 25px; font-weight: 600; }
+.hs-tuslar .t.op:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.hs-tuslar .t.esit { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-size: 26px; }
+.hs-tuslar .t.esit:hover { filter: brightness(1.08); }
 .hs-tuslar .t.bil { height: 42px; font-size: 15px; border-radius: 12px; color: var(--fg-2); }
-html[data-theme="dark"] .hs-tuslar .t.op { background: #e3e6eb; color: #1c1f23; border-color: #e3e6eb; }
 .hs-gecmis { padding: 14px; border-radius: 18px; background: var(--bg-2); border: 1px solid var(--line); max-height: calc(100vh - 140px); display: flex; flex-direction: column; min-width: 0; }
 .hs-gecmis-bas { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .hs-gecmis-bas b { display: inline-flex; align-items: center; gap: 6px; }
@@ -154,28 +152,5 @@ html[data-theme="dark"] .hs-karar { color: #4ade80; }
   body[data-hsekme="hesap"] .hs-gecmis { max-height: 220px; }
 }
 
-/* ───── Karakter: klasik hesap makinesi (koyu gövde, yeşil LCD, turuncu eşittir) ───── */
-html:has(body.hs-app) { background: radial-gradient(60% 50% at 20% 0%, #33363c 0%, transparent 70%), linear-gradient(180deg, #23252a, #17181b) fixed !important; }
-body.hs-app { --hs-vurgu: #ff8a00; --hs-op: #3d4046; --bg-2: rgba(255,255,255,.05); --bg: rgba(255,255,255,.06); --bg-3: rgba(255,255,255,.1); --line: rgba(255,255,255,.09); --fg: #f1f1f1; --fg-2: #c3c5ca; --fg-3: #8d9097; color: #f1f1f1; background: transparent !important; }
-body.hs-app .brand-mark { background: #ff8a00; border-color: #ff8a00; color: #1f2125; box-shadow: none; }
-body.hs-app .hs-bas .icon-btn { color: #c3c5ca; }
-body.hs-app .seg { background: rgba(255,255,255,.07); } body.hs-app .seg button { color: #b5b8be; } body.hs-app .seg button.on { background: #ff8a00; color: #1f2125; }
-body.hs-app .hs-makine { background: linear-gradient(180deg, #2c2e33, #222428); border: 1px solid #3a3d43; box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
-body.hs-app .hs-ekran { background: linear-gradient(#bccaa6, #a3b28d); border: 0; color: #1f2a14; box-shadow: inset 0 3px 10px rgba(0,0,0,.35); font-family: ui-monospace, "DejaVu Sans Mono", "Cascadia Mono", monospace; }
-body.hs-app .hs-ifade { color: #1f2a14; font-weight: 600; }
-body.hs-app .hs-onizleme, body.hs-app .hs-hafiza { color: rgba(31, 42, 20, .65); }
-body.hs-app .hs-onizleme.hata { color: #8b1a1a; }
-body.hs-app .hs-ust .icon-btn { color: #2b3a1d; }
-body.hs-app .hs-hafiza-tus button { color: #b5b8be; } body.hs-app .hs-hafiza-tus button:hover { background: rgba(255,255,255,.07); }
-body.hs-app .hs-tuslar .t { background: linear-gradient(#3a3d43, #2c2e33); border: 0; color: #f1f1f1; box-shadow: 0 3px 0 #141518, inset 0 1px 0 rgba(255,255,255,.08); }
-body.hs-app .hs-tuslar .t:hover { background: linear-gradient(#43464d, #33363b); }
-body.hs-app .hs-tuslar .t:active, body.hs-app .hs-tuslar .t.bas { transform: translateY(2px); box-shadow: 0 1px 0 #141518; }
-body.hs-app .hs-tuslar .t.fn { background: linear-gradient(#5b5f67, #4a4d54); color: #f1f1f1; }
-body.hs-app .hs-tuslar .t.op { background: linear-gradient(#4a4d54, #3d4046); color: #ffb35c; }
-body.hs-app .hs-tuslar .t.esit { background: linear-gradient(#ff9a1f, #ff7a00); color: #1f2125; box-shadow: 0 3px 0 #a94f00; }
-body.hs-app .hs-tuslar .t.bil { background: linear-gradient(#34373c, #2a2c30); color: #c3c5ca; }
-body.hs-app .hs-kart, body.hs-app .hs-gecmis { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
-body.hs-app .hs-cip.on { background: #ff8a00; color: #1f2125; border-color: #ff8a00; }
-body.hs-app input, body.hs-app select, body.hs-app textarea { color-scheme: dark; }
-body.hs-app .hs-alt-sekme { background: rgba(28, 30, 33, .94) !important; border-color: rgba(255,255,255,.08) !important; }
-body.hs-app .hs-alt-sekme button { color: #9a9ea5; } body.hs-app .hs-alt-sekme button.on { color: #ff9f0a; }
+/* ───── Windows 11: Hesap paylaşılan temayı izler (açık/koyu Mica, mavi vurgu) ─────
+   Klasik karakter skini kaldırıldı; gövde, ekran ve tuşlar ortak tokenlara düşer. */
