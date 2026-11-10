@@ -58,7 +58,7 @@ html[data-theme="dark"] .df-hk.yakin em { color: #fbbf24; }
 
 /* Karşılama ve şablonlar */
 .df-hosgeldin { max-width: 720px; margin: 10px auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.df-hg-ikon { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--silver); border: 1px solid var(--silver-line); color: #1b1d21; }
+.df-hg-ikon { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--accent); border: 1px solid var(--accent); color: var(--accent-fg); }
 .df-hg-ikon svg { width: 34px; height: 34px; }
 .df-hosgeldin h2 { margin: 6px 0 0; font-size: 22px; }
 .df-hosgeldin > p { margin: 0; max-width: 520px; }
@@ -75,7 +75,6 @@ html[data-theme="dark"] .df-hk.yakin em { color: #fbbf24; }
 .df-tik svg { width: 13px; height: 13px; stroke-width: 3; }
 .df-sablon:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg-2)); }
 .df-sablon:has(input:checked) .df-tik { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-html[data-theme="dark"] .df-sablon:has(input:checked) .df-tik { background: #e8eaed; border-color: #e8eaed; color: #1c1f23; }
 
 /* Defter ekranı */
 .df-ozet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -93,7 +92,6 @@ html[data-theme="dark"] .df-sablon:has(input:checked) .df-tik { background: #e8e
 .df-cipler { display: flex; flex-wrap: wrap; gap: 6px; }
 .df-cip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-2); font: inherit; font-size: 13px; cursor: pointer; }
 .df-cip.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-html[data-theme="dark"] .df-cip.on { background: #e8eaed; color: #1c1f23; border-color: #e8eaed; }
 .df-cip.duzen { padding-right: 4px; }
 .df-cip.duzen button { border: 0; background: transparent; color: inherit; display: grid; place-items: center; padding: 1px; cursor: pointer; opacity: .75; }
 .df-cip.duzen svg { width: 14px; height: 14px; }
@@ -119,7 +117,7 @@ html[data-theme="dark"] .df-etiket.iyi { color: #4ade80; } html[data-theme="dark
 .df-bos { text-align: center; padding: 28px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--fg-2); }
 .df-bos svg { width: 36px; height: 36px; color: var(--fg-3); }
 .df-bos span { font-size: 13.5px; color: var(--fg-3); }
-.df-fab { position: fixed; right: max(20px, calc((100vw - 980px) / 2 + 20px)); bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 20; display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 999px; border: 1px solid var(--silver-line); background: var(--silver); color: #1b1d21; font: inherit; font-size: 15.5px; font-weight: 650; box-shadow: 0 10px 28px rgba(20, 24, 30, .25); cursor: pointer; }
+.df-fab { position: fixed; right: max(20px, calc((100vw - 980px) / 2 + 20px)); bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 20; display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); font: inherit; font-size: 15.5px; font-weight: 650; box-shadow: 0 6px 16px -4px rgba(0,0,0,.3); cursor: pointer; }
 .df-fab svg { width: 20px; height: 20px; }
 
 /* Kayıt formu */
@@ -186,17 +184,11 @@ html[data-theme="dark"] .sheet.df-form, html[data-theme="dark"] .sheet.df-duzen 
 @media (prefers-color-scheme: dark) { html[data-theme="auto"] .sheet.df-form, html[data-theme="auto"] .sheet.df-duzen { background: rgba(30,32,36,.97) !important; } }
 .df-form .sheet-head h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ───── Karakter: kâğıt ───── */
-html.df-html:not([data-theme="dark"]) { background: #f4eee2 repeating-linear-gradient(transparent 0 31px, rgba(80, 110, 160, .10) 31px 32px) fixed !important; }
-html.df-html[data-theme="dark"] { background: #1d1a16 repeating-linear-gradient(transparent 0 31px, rgba(255, 240, 210, .05) 31px 32px) fixed !important; }
-@media (prefers-color-scheme: dark) { html.df-html[data-theme="auto"] { background: #1d1a16 repeating-linear-gradient(transparent 0 31px, rgba(255, 240, 210, .05) 31px 32px) fixed !important; } }
-html.df-html:not([data-theme="dark"]) body.df-app { --bg-2: #fffdf8; --bg: #fffdf8; --bg-3: #f3ecdf; --line: #e7dcc9; --fg: #2b2620; --fg-2: #5e5447; --fg-3: #8a7f70; color: #2b2620; }
-html.df-html[data-theme="dark"] body.df-app { --bg-2: #2a2620; --bg: #24211c; --bg-3: #353029; --line: #3d372e; --fg: #f1ebe0; --fg-2: #c9bfae; --fg-3: #978c7b; }
-.df-app .brand-mark { background: #2b2620; border-color: #2b2620; color: #f6f1e7; box-shadow: none; }
-html[data-theme="dark"] .df-app .brand-mark { background: #f1ebe0; border-color: #f1ebe0; color: #2b2620; }
-.df-bolum h2 { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; font-size: 18px; text-transform: none; letter-spacing: 0; color: var(--fg-2); }
+/* ───── Windows 11: Kayıt Defteri paylaşılan temayı izler (açık/koyu Mica) ─────
+   Kâğıt (krem + çizgili) karakter skini kaldırıldı; renkli defter kartları korundu. */
+.df-bolum h2 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; color: var(--fg-2); }
 .df-bolum h2 svg { display: none; }
-.df-hk, .df-ozet div, .df-grafik, .df-kayit, .df-ara, .df-hat, .df-sablon { box-shadow: 0 1px 0 rgba(0,0,0,.03), 0 8px 22px rgba(60, 40, 20, .06); }
+.df-hk, .df-ozet div, .df-grafik, .df-kayit, .df-ara, .df-hat, .df-sablon { box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 .df-defterler { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
 .df-kitap { position: relative; min-height: 168px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 16px 14px 14px 26px; border: 0; border-radius: 6px 16px 16px 6px; background: var(--r); color: #fff; font: inherit; text-align: left; cursor: pointer;
   box-shadow: inset 7px 0 0 rgba(0,0,0,.2), inset 8px 0 0 rgba(255,255,255,.12), 0 10px 22px rgba(40, 30, 20, .2); transition: transform .12s; overflow: hidden; }
