@@ -677,14 +677,14 @@ input.note-h::placeholder { color: var(--fg-3); }
 .tp-light { background: #f3f3f3; }
 .tp-light i { background: #e8e8e8; }
 .tp-light b { background: #ffffff; box-shadow: inset 0 0 0 1px #e2e2e2; }
-.tp-light b:nth-of-type(1) { background: #0067c0; box-shadow: none; }
+.tp-light b:nth-of-type(1) { background: #2f6bb3; box-shadow: none; }
 .tp-dark { background: #202020; }
 .tp-dark i { background: #1a1a1a; }
 .tp-dark b { background: #2b2b2b; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
 .tp-dark b:nth-of-type(1) { background: #4cc2ff; box-shadow: none; }
 .tp-auto { background: linear-gradient(135deg, #f3f3f3 50%, #202020 50%); }
 .tp-auto i { background: #8a8a8a; }
-.tp-auto b:nth-of-type(1) { background: #0067c0; }
+.tp-auto b:nth-of-type(1) { background: #2f6bb3; }
 .tp-auto b:nth-of-type(2) { background: #2b2b2b; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
 @media (max-width: 560px) {
   .theme-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1467,13 +1467,13 @@ html[data-theme="dark"] body.notes-app .btn.primary { background: #fcd34d; borde
   --fg: #1a1a1a;
   --fg-2: #5a5a5a;
   --fg-3: #8a8a8a;
-  --accent: #0067c0;       /* Windows mavisi */
+  --accent: #2f6bb3;       /* Windows mavisi */
   --accent-fg: #ffffff;
-  --accent-soft: #eaf2fb;  /* seçili öğe için açık mavi */
+  --accent-soft: #e9f0f8;  /* seçili öğe için açık mavi */
   --sel: #ededed;
   --danger: #c42b1c;
-  --silver: linear-gradient(180deg, #0a7ad4, #0067c0);
-  --silver-line: #005ba6;
+  --silver: linear-gradient(180deg, #4a84c5, #2f6bb3);
+  --silver-line: #255a99;
   --shadow: 0 8px 16px rgba(0,0,0,.14);
   --radius: 8px;
 }
@@ -1482,7 +1482,7 @@ body { font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -
 /* Kenar çubuğu: Win11'de açık gezinme bölmesi (grafit değil) */
 .sidebar {
   --bg: #f9f9f9; --bg-3: #ededed; --line: #e6e6e6;
-  --fg: #1a1a1a; --fg-2: #5a5a5a; --fg-3: #8a8a8a; --accent-soft: #eaf2fb;
+  --fg: #1a1a1a; --fg-2: #5a5a5a; --fg-3: #8a8a8a; --accent-soft: #e9f0f8;
   background: #f9f9f9; color: var(--fg); border-right-color: #e6e6e6 !important;
 }
 /* Seçili gezinme öğesi: sol mavi gösterge + hafif dolgu (Win11 nav) */
@@ -1493,9 +1493,9 @@ body { font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -
 .btn { background: #fbfbfb; border: 1px solid rgba(0,0,0,.07); border-bottom-color: rgba(0,0,0,.16); border-radius: 5px; box-shadow: none; }
 .btn:hover { background: #f2f2f2; }
 .btn:active { background: #ebebeb; transform: none; }
-.btn.primary, .fab { background: var(--accent); border: 1px solid #005ba6; color: #fff; box-shadow: none; }
-.btn.primary:hover, .fab:hover { background: #1a78c8; filter: none; }
-.btn.primary:active, .fab:active { background: #2a82cc; }
+.btn.primary, .fab { background: var(--accent); border: 1px solid #255a99; color: #fff; box-shadow: none; }
+.btn.primary:hover, .fab:hover { background: #3a78c0; filter: none; }
+.btn.primary:active, .fab:active { background: #4886c9; }
 .btn.danger { background: var(--danger); border-color: #a82414; }
 .icon-btn { border-radius: 6px; }
 .icon-btn:hover { background: rgba(0,0,0,.05); }
@@ -1524,6 +1524,6 @@ body { font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Uygulama vurguları tek sistem mavisine gelsin (Win11 tek vurgu kullanır) */
-body.notes-app { --nacc: #0067c0; --accent: #0067c0; --accent-fg: #fff; --accent-soft: #eaf2fb; --sel: #ededed; --kagit: #ffffff; }
+body.notes-app { --nacc: #2f6bb3; --accent: #2f6bb3; --accent-fg: #fff; --accent-soft: #e9f0f8; --sel: #ededed; --kagit: #ffffff; }
 body.notes-app .nsec { color: var(--fg-3); }
 body.notes-app .notes-list .note-card.sel { outline: 2px solid var(--accent); }
