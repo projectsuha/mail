@@ -6,7 +6,7 @@
   --yazi:#ffffff; --soluk:rgba(255,255,255,.73); --soluk2:rgba(255,255,255,.5);
   --yesil:#2fd36b; --yesil-koyu:#1f9b4e; --kirmizi:#e5544b; --sari:#f3c54a;
   --mavi:#4b9bff; --mor:#b794f6; --teal:#2fd3c0;
-  --vurgu:#4cc2ff; --vurgu-koyu:#2f98d4; --vurgu-fg:#002338;   /* Win11 sistem vurgusu */
+  --vurgu:#7ea8e0; --vurgu-koyu:#5a84c4; --vurgu-fg:#002338;   /* Win11 sistem vurgusu */
   --golge:0 8px 24px rgba(0,0,0,.4);
   --golge-yum:0 2px 10px rgba(0,0,0,.3);
   --r:8px;
@@ -58,7 +58,7 @@ input[type=range]{accent-color:var(--vurgu)}
 .btn:active{transform:scale(.98)}
 .btn{border-bottom-color:rgba(0,0,0,.3)}
 .btn.ana{background:var(--vurgu);border-color:var(--vurgu-koyu);color:var(--vurgu-fg)}
-.btn.ana:hover{background:#63cbff;filter:none}
+.btn.ana:hover{background:#93b8e8;filter:none}
 .btn.tehlike{background:#3a2626;border-color:#6b3a37;color:#ffb4ae}
 .btn.tehlike:hover{background:#45292a}
 .btn.tam{width:100%}
