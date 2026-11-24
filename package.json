@@ -1,0 +1,31 @@
+{
+  "name": "suha-mail-imap",
+  "productName": "Suha Mail IMAP",
+  "version": "0.1.0",
+  "description": "Suha Mail (IMAP) — kendi altyapımız, Google'a bağlı değil (deneme)",
+  "author": "Sinan Erdoğan",
+  "private": true,
+  "main": "main.js",
+  "scripts": { "start": "electron .", "dist": "electron-builder --win nsis --publish never" },
+  "dependencies": {
+    "imapflow": "^1.0.164",
+    "mailparser": "^3.7.1"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.snnerdogan98.mailimap",
+    "productName": "Suha Mail IMAP",
+    "copyright": "Sinan Erdoğan",
+    "files": ["main.js", "preload.js", "renderer/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "renderer/simge/mail.ico" },
+    "nsis": {
+      "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true, "createDesktopShortcut": true, "shortcutName": "Suha Mail IMAP",
+      "installerLanguages": ["tr_TR"], "language": "1055",
+      "artifactName": "Suha-Mail-IMAP-Kurulum-${version}.exe"
+    }
+  }
+}
