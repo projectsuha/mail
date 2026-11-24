@@ -71,3 +71,14 @@ button{font:inherit;cursor:pointer}
 .btn:disabled{opacity:.5}
 .not{font-size:12px;color:var(--fg3);margin-top:12px;line-height:1.5}
 .cift{display:grid;grid-template-columns:1fr 100px;gap:10px}
+
+/* Aşama 1-2: klasör çubuğu, yanıt, yaz */
+.bas .ekle#yeniBtn{padding:7px 10px;font-size:15px;line-height:1}
+.klsat{display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line)}
+.klsat select{flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;font-size:13.5px;outline:0}
+.yeni-ikon{border:1px solid var(--line);background:var(--bg2);color:var(--fg2);border-radius:6px;width:34px;height:34px;font-size:16px;flex:none}
+.yeni-ikon:hover{background:var(--bg3);color:var(--fg)}
+.okbas{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg2)}
+.btn.sm{flex:none;padding:7px 14px;border-radius:6px;border:1px solid rgba(0,0,0,.08);border-bottom-color:rgba(0,0,0,.16);background:#fbfbfb;color:var(--fg);font-weight:600;font-size:13.5px}
+.btn.sm:hover{background:#f2f2f2}
+.kutu textarea:focus{outline:0;border-color:var(--acc)}

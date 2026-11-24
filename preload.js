@@ -4,8 +4,9 @@ contextBridge.exposeInMainWorld('imapi', {
   hesaplar: () => ipcRenderer.invoke('hesaplar'),
   hesapEkle: (veri) => ipcRenderer.invoke('hesap-ekle', veri),
   hesapSil: (id) => ipcRenderer.invoke('hesap-sil', id),
-  gelenler: (id, limit) => ipcRenderer.invoke('gelenler', id, limit),
-  mesaj: (id, uid) => ipcRenderer.invoke('mesaj', id, uid)
+  klasorler: (id) => ipcRenderer.invoke('klasorler', id),
+  gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
+  mesaj: (id, klasor, uid) => ipcRenderer.invoke('mesaj', id, klasor, uid),
+  gonder: (id, mesaj) => ipcRenderer.invoke('gonder', id, mesaj)
 });
-// Program kapısı (ileride ortak tema gelirse) için işaret
 contextBridge.exposeInMainWorld('suhaDesktop', true);
