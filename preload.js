@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('imapi', {
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
   onbellek: (id, klasor) => ipcRenderer.invoke('onbellek', id, klasor),
   gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
+  tumGelenler: (limitHer) => ipcRenderer.invoke('tum-gelenler', limitHer),
   mesaj: (id, klasor, uid) => ipcRenderer.invoke('mesaj', id, klasor, uid),
   ekIndir: (id, klasor, uid, idx) => ipcRenderer.invoke('ek-indir', id, klasor, uid, idx),
   dosyaSec: () => ipcRenderer.invoke('dosya-sec'),

@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const nodemailer = require('nodemailer');
+const MailComposer = require('nodemailer/lib/mail-composer');
 
 app.setAppUserModelId('com.snnerdogan98.mailimap');
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
@@ -133,12 +134,46 @@ ipcMain.handle('dosya-sec', async () => {
 ipcMain.handle('gonder', async (_e, id, m) => {
   const h = bul(id); if (!h) return { hata: 'Hesap yok' };
   try {
-    const t = tasiyici(h);
-    await t.sendMail({ from: { name: h.ad || h.eposta, address: h.eposta }, to: m.kime, subject: m.konu,
+    const mail = { from: { name: h.ad || h.eposta, address: h.eposta }, to: m.kime, subject: m.konu,
       text: m.metin || '', inReplyTo: m.inReplyTo || undefined, references: m.references || undefined,
-      attachments: (m.ekYollar || []).map(p => ({ path: p })) });
+      attachments: (m.ekYollar || []).map(p => ({ path: p })) };
+    await tasiyici(h).sendMail(mail);
+    // Gönderilmiş'e kopya (IMAP append) — başarısızsa yut, gönderme asıl iş
+    try {
+      const raw = await new Promise((res, rej) => new MailComposer(mail).compile().build((e, msg) => e ? rej(e) : res(msg)));
+      const c = istemci(h); await c.connect();
+      let sentYol = m.sentYol;
+      if (!sentYol) { const list = await c.list(); const s = list.find(x => x.specialUse === '\\Sent'); sentYol = s ? s.path : null; }
+      if (sentYol) await c.append(sentYol, raw, ['\\Seen']);
+      await c.logout();
+    } catch {}
     return { ok: true };
   } catch (e) { return { hata: cevir(e) }; }
+});
+
+// Tüm hesapların gelen kutularını birleştir
+ipcMain.handle('tum-gelenler', async (_e, limitHer = 25) => {
+  const hepsi = [];
+  for (const h of hesaplariOku()) {
+    try {
+      const r = await ileKlasor(h, 'INBOX', async c => {
+        const out = []; const total = c.mailbox.exists || 0;
+        if (total > 0) {
+          const bas = Math.max(1, total - limitHer + 1);
+          for await (const msg of c.fetch(`${bas}:*`, { uid: true, envelope: true, flags: true })) {
+            const f = msg.envelope.from && msg.envelope.from[0];
+            out.push({ hid: h.id, hesapAd: h.ad || h.eposta, uid: msg.uid, konu: msg.envelope.subject || '(konu yok)',
+              kimden: f ? (f.name || f.address) : '', adres: f ? f.address : '', tarih: msg.envelope.date,
+              okundu: msg.flags ? msg.flags.has('\\Seen') : true, yildiz: msg.flags ? msg.flags.has('\\Flagged') : false });
+          }
+        }
+        return out;
+      });
+      hepsi.push(...r);
+    } catch {}
+  }
+  hepsi.sort((a, b) => new Date(b.tarih || 0) - new Date(a.tarih || 0));
+  return { liste: hepsi.slice(0, 100) };
 });
 
 ipcMain.handle('isle', async (_e, id, klasor, uid, eylem, ekstra = {}) => {
