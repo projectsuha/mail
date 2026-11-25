@@ -195,6 +195,8 @@ ipcMain.handle('gonder', async (_e, id, m) => {
       text: m.metin || '', inReplyTo: m.inReplyTo || undefined, references: m.references || undefined,
       attachments: (m.ekYollar || []).map(p => ({ path: p })) };
     if (m.html) mail.html = m.html;
+    // Gömülü (inline) görseller: CID ekleri
+    if (m.gomuller && m.gomuller.length) mail.attachments = mail.attachments.concat(m.gomuller.map(g => ({ filename: g.cid.split('@')[0] + '.' + ((g.tur.split('/')[1] || 'png')), cid: g.cid, content: Buffer.from(g.veri, 'base64'), contentType: g.tur, contentDisposition: 'inline' })));
     const _t = await tasiyici(h); await _t.sendMail(mail);
     // Gönderilmiş'e kopya (IMAP append) — başarısızsa yut, gönderme asıl iş
     try {

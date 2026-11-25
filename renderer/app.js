@@ -210,6 +210,7 @@ function yazModal(on = {}, gonderHid) {
       <button type="button" class="ab" data-cmd="insertOrderedList" title="Numaralı liste">1. —</button>
       <span class="abol"></span>
       <button type="button" class="ab" data-cmd="bag" title="Bağlantı ekle">🔗</button>
+      <button type="button" class="ab" data-cmd="resim" title="Görsel ekle">🖼</button>
       <button type="button" class="ab" data-cmd="removeFormat" title="Biçimi temizle">⌫</button>
     </div>
     <div id="editor" class="editor" contenteditable="true" spellcheck="true"></div>
@@ -229,16 +230,25 @@ function yazModal(on = {}, gonderHid) {
   rng.setStart(ed.firstChild, 0); rng.collapse(true); sel.removeAllRanges(); sel.addRange(rng);
   // Araç çubuğu
   $('#arac').onmousedown = e => { if (e.target.closest('.ab')) e.preventDefault(); };
+  // Görsel yerleştirme (data-URL olarak; gönderimde CID'e çevrilir)
+  const resimKoy = file => { if (!file || !/^image\//.test(file.type)) return; const r = new FileReader(); r.onload = () => { ed.focus(); document.execCommand('insertHTML', false, `<img src="${r.result}" style="max-width:100%">`); }; r.readAsDataURL(file); };
   $('#arac').onclick = e => {
     const b = e.target.closest('.ab'); if (!b) return;
     const cmd = b.dataset.cmd; ed.focus();
     if (cmd === 'bag') { const u = prompt('Bağlantı adresi (https://…)'); if (u) document.execCommand('createLink', false, u.trim()); }
+    else if (cmd === 'resim') { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => { [...inp.files].forEach(resimKoy); }; inp.click(); }
     else document.execCommand(cmd, false, null);
   };
+  ed.addEventListener('paste', e => { const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => /^image\//.test(x.type)); if (it) { e.preventDefault(); resimKoy(it.getAsFile()); } });
+  ed.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.items].some(x => x.kind === 'file')) e.preventDefault(); });
+  ed.addEventListener('drop', e => { const f = e.dataTransfer && [...e.dataTransfer.files].filter(x => /^image\//.test(x.type)); if (f && f.length) { e.preventDefault(); f.forEach(resimKoy); } });
   $('#ekBtn').onclick = async () => { const y = await window.imapi.dosyaSec(); if (y && y.length) { yazEkler = yazEkler.concat(y); $('#ekAd').textContent = yazEkler.map(p => p.split(/[\\/]/).pop()).join(', '); } };
   $('#yolla').onclick = async () => {
-    const html = `<div style="font-family:Segoe UI,system-ui,sans-serif;font-size:14px;color:#1a1a1a">${ed.innerHTML}</div>`;
-    const veri = { kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), metin: ed.innerText, html, inReplyTo: on.inReplyTo, references: on.references, ekYollar: yazEkler };
+    // Gömülü görselleri (data:) CID eklerine çevir
+    const gomuller = []; const doc = new DOMParser().parseFromString(ed.innerHTML, 'text/html');
+    [...doc.querySelectorAll('img')].forEach((im, i) => { const s = im.getAttribute('src') || ''; const mt = s.match(/^data:([^;]+);base64,(.+)$/); if (mt) { const cid = 'g' + Date.now() + i + '@suha'; gomuller.push({ cid, tur: mt[1], veri: mt[2] }); im.setAttribute('src', 'cid:' + cid); if (!/max-width/.test(im.getAttribute('style') || '')) im.setAttribute('style', (im.getAttribute('style') || '') + ';max-width:100%'); } });
+    const html = `<div style="font-family:Segoe UI,system-ui,sans-serif;font-size:14px;color:#1a1a1a">${doc.body.innerHTML}</div>`;
+    const veri = { kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), metin: ed.innerText, html, gomuller, inReplyTo: on.inReplyTo, references: on.references, ekYollar: yazEkler };
     if (!veri.kime) { $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = 'Alıcı gerekli.'; return; }
     $('#yolla').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Gönderiliyor…';
     const r = await window.imapi.gonder(hid, veri);
