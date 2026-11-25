@@ -87,13 +87,56 @@ const taslakDosya = () => path.join(app.getPath('userData'), 'taslaklar.json');
 function taslaklarOku() { try { return JSON.parse(fs.readFileSync(taslakDosya(), 'utf8')); } catch { return []; } }
 function taslaklarYaz(l) { try { fs.writeFileSync(taslakDosya(), JSON.stringify(l)); } catch {} }
 ipcMain.handle('taslaklar', () => taslaklarOku().sort((a, b) => b.ts - a.ts));
-ipcMain.handle('taslak-kaydet', (_e, t) => {
+// IMAP Drafts klasör yolu
+async function draftsYol(c) { const list = await c.list(); const d = list.find(x => x.specialUse === '\\Drafts') || list.find(x => /^(drafts|taslaklar|kara ?kutu)$/i.test(x.name)); return d ? d.path : null; }
+async function taslakRaw(h, t) { const mail = { from: { name: h.ad || h.eposta, address: h.eposta }, to: t.kime || '', subject: t.konu || '', html: t.html || '', text: t.ozet || '' }; return await new Promise((res, rej) => new MailComposer(mail).compile().build((e, msg) => e ? rej(e) : res(msg))); }
+ipcMain.handle('taslak-kaydet', async (_e, t) => {
   const l = taslaklarOku(); const id = t.id || 't' + Date.now() + Math.random().toString(36).slice(2, 6);
-  const kayit = { ...t, id, ts: Date.now() };
+  const onceki = l.find(x => x.id === id) || {};
+  const kayit = { ...t, id, ts: Date.now(), sunucuYol: t.sunucuYol || onceki.sunucuYol, sunucuUid: t.sunucuUid || onceki.sunucuUid };
+  // Sunucu Drafts'a yükle (çevrimdışıysa yut, yerel kopya kalır)
+  let senkron = false, sunucuHata = null;
+  const h = bul(t.hid);
+  if (h) {
+    try {
+      const raw = await taslakRaw(h, kayit);
+      const c = await istemci(h); await c.connect();
+      const yol = await draftsYol(c);
+      if (yol) {
+        if (kayit.sunucuYol && kayit.sunucuUid) { try { const lock = await c.getMailboxLock(kayit.sunucuYol); try { await c.messageDelete(String(kayit.sunucuUid), { uid: true }); } finally { lock.release(); } } catch {} }
+        const r = await c.append(yol, raw, ['\\Draft']);
+        kayit.sunucuYol = yol; kayit.sunucuUid = (r && r.uid) || null; senkron = true;
+      } else { sunucuHata = 'Sunucuda Drafts klasörü bulunamadı.'; }
+      await c.logout();
+    } catch (e) { sunucuHata = cevir(e); }
+  }
   const i = l.findIndex(x => x.id === id); if (i >= 0) l[i] = kayit; else l.push(kayit);
-  taslaklarYaz(l); return { id };
+  taslaklarYaz(l); return { id, senkron, hata: sunucuHata };
 });
-ipcMain.handle('taslak-sil', (_e, id) => { taslaklarYaz(taslaklarOku().filter(x => x.id !== id)); return { ok: true }; });
+ipcMain.handle('taslak-sil', async (_e, id) => {
+  const l = taslaklarOku(); const t = l.find(x => x.id === id);
+  if (t && t.sunucuYol && t.sunucuUid) { try { const h = bul(t.hid); if (h) { const c = await istemci(h); await c.connect(); const lock = await c.getMailboxLock(t.sunucuYol); try { await c.messageDelete(String(t.sunucuUid), { uid: true }); } finally { lock.release(); } await c.logout(); } } catch {} }
+  taslaklarYaz(l.filter(x => x.id !== id)); return { ok: true };
+});
+// Sunucudaki Drafts klasörünü getir (başka cihazda kaydedilenler dahil), yerelle birleştir
+ipcMain.handle('taslak-sunucu-getir', async (_e, hid) => {
+  const h = bul(hid); if (!h) return { hata: 'Hesap yok' };
+  try {
+    const c = await istemci(h); await c.connect();
+    const yol = await draftsYol(c);
+    if (!yol) { await c.logout(); return { liste: [] }; }
+    const lock = await c.getMailboxLock(yol); const out = [];
+    try {
+      const yerel = taslaklarOku();
+      for await (const msg of c.fetch({ all: true }, { uid: true, source: true })) {
+        if (yerel.some(x => x.hid === hid && x.sunucuYol === yol && String(x.sunucuUid) === String(msg.uid))) continue;
+        const p = await simpleParser(msg.source);
+        out.push({ sunucuUid: msg.uid, sunucuYol: yol, hid, kime: p.to ? p.to.text : '', konu: p.subject || '', html: p.html || (p.textAsHtml || ''), ozet: (p.text || '').trim().slice(0, 80), ts: p.date ? +new Date(p.date) : Date.now() });
+      }
+    } finally { lock.release(); try { await c.logout(); } catch {} }
+    return { liste: out };
+  } catch (e) { return { hata: cevir(e) }; }
+});
 
 // OAuth: tarayıcıda giriş yap (loopback), kodu jetona çevir, hesabı kaydet
 ipcMain.handle('oauth-baslat', async (_e, saglayici, clientId, clientSecret, eposta) => {

@@ -47,7 +47,7 @@ function render() {
   </div>`;
   $('#ekleBtn').onclick = hesapModal;
   $('#yeniBtn').onclick = () => yazModal();
-  $('#taslakListeBtn').onclick = taslakModal;
+  $('#taslakListeBtn').onclick = () => taslakModal();
   $('#temaBtn').onclick = temaDeg; temaIkon();
   if ($('#ayarBtn')) $('#ayarBtn').onclick = () => ayarModal(S.hid);
   if ($('#yenileBtn')) $('#yenileBtn').onclick = () => yukleGelen();
@@ -219,7 +219,7 @@ function yazModal(on = {}, gonderHid) {
     <div class="ekcubuk"><button class="btn sm" id="ekBtn">📎 Dosya ekle</button><span id="ekAd" class="not"></span></div>
     <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn" id="taslakBtn">💾 Taslak</button><button class="btn ana" id="yolla">Gönder</button></div>
     <p class="not" id="durum"></p></div></div>`;
-  let taslakId = on.taslakId || null;
+  let taslakId = on.taslakId || null, sunucuYol = on.sunucuYol || null, sunucuUid = on.sunucuUid || null;
   $('#vaz').onclick = () => m.innerHTML = '';
   // Zengin editör başlangıç içeriği (taslak geri yükleme > yanıt/ilet gövdesi + imza)
   const nl2br = s => esc(s).replace(/\n/g, '<br>');
@@ -252,9 +252,12 @@ function yazModal(on = {}, gonderHid) {
   ed.addEventListener('drop', e => { const f = e.dataTransfer && [...e.dataTransfer.files].filter(x => /^image\//.test(x.type)); if (f && f.length) { e.preventDefault(); f.forEach(resimKoy); } });
   $('#ekBtn').onclick = async () => { const y = await window.imapi.dosyaSec(); if (y && y.length) { yazEkler = yazEkler.concat(y); $('#ekAd').textContent = yazEkler.map(p => p.split(/[\\/]/).pop()).join(', '); } };
   $('#taslakBtn').onclick = async () => {
-    const t = { id: taslakId, hid, kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), html: ed.innerHTML, ozet: ed.innerText.trim().slice(0, 80), ekYollar: yazEkler, inReplyTo: on.inReplyTo, references: on.references };
-    const r = await window.imapi.taslakKaydet(t); taslakId = r.id;
-    $('#durum').style.color = 'var(--acc)'; $('#durum').textContent = 'Taslak kaydedildi ✓'; setTimeout(() => { if ($('#durum')) $('#durum').textContent = ''; }, 1600);
+    $('#taslakBtn').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Taslak kaydediliyor…';
+    const t = { id: taslakId, hid, kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), html: ed.innerHTML, ozet: ed.innerText.trim().slice(0, 80), ekYollar: yazEkler, inReplyTo: on.inReplyTo, references: on.references, sunucuYol, sunucuUid };
+    const r = await window.imapi.taslakKaydet(t); taslakId = r.id; $('#taslakBtn').disabled = false;
+    $('#durum').style.color = r.senkron ? 'var(--acc)' : 'var(--fg3)';
+    $('#durum').textContent = r.senkron ? 'Taslak kaydedildi ☁ (sunucuya da yüklendi) ✓' : ('Taslak bu cihaza kaydedildi ✓' + (r.hata ? ' — sunucu: ' + r.hata : ''));
+    setTimeout(() => { if ($('#durum')) $('#durum').textContent = ''; }, 2600);
   };
   $('#yolla').onclick = async () => {
     // Gömülü görselleri (data:) CID eklerine çevir
@@ -271,28 +274,45 @@ function yazModal(on = {}, gonderHid) {
   };
 }
 
-// Taslaklar listesi
-async function taslakModal() {
+// Taslaklar listesi (yerel + istenirse sunucudan getirilen)
+async function taslakModal(sunucu = []) {
   const m = $('#modal');
   const l = await window.imapi.taslaklar();
   const hesapAd = id => { const h = S.hesaplar.find(x => x.id === id); return h ? (h.ad || h.eposta) : '—'; };
-  const sat = l.length ? l.map(t => `<div class="tsat" data-id="${t.id}">
-      <div class="ti"><b>${esc(t.konu || '(konu yok)')}</b><span>${esc(tarih(t.ts, false))}</span></div>
+  const yerelSat = l.map(t => `<div class="tsat" data-id="${t.id}">
+      <div class="ti"><b>${esc(t.konu || '(konu yok)')}</b><span>${t.sunucuUid ? '☁ ' : ''}${esc(tarih(t.ts, false))}</span></div>
       <div class="tk">${esc(t.kime || 'alıcı yok')} · ${esc(hesapAd(t.hid))}</div>
       <div class="tk2">${esc(t.ozet || '')}</div>
       <button class="tsil" data-sil="${t.id}" title="Sil">🗑</button>
-    </div>`).join('') : '<p class="not">Kayıtlı taslak yok.</p>';
+    </div>`).join('');
+  const sunucuSat = sunucu.map((t, i) => `<div class="tsat tsunucu" data-si="${i}">
+      <div class="ti"><b>☁ ${esc(t.konu || '(konu yok)')}</b><span>${esc(tarih(t.ts, false))}</span></div>
+      <div class="tk">${esc(t.kime || 'alıcı yok')} · ${esc(hesapAd(t.hid))}</div>
+      <div class="tk2">${esc(t.ozet || '')} <i class="htag" style="color:var(--acc)">· yalnız sunucuda</i></div>
+    </div>`).join('');
+  const govde = (yerelSat + sunucuSat) || '<p class="not">Kayıtlı taslak yok.</p>';
   m.innerHTML = `<div class="ort"><div class="kutu">
-    <h3>Taslaklar</h3><p class="alt">Düzenlemeye devam etmek için bir taslağa tıkla.</p>
-    <div class="tliste">${sat}</div>
-    <div class="onayed"><button class="btn" id="tkapat">Kapat</button></div></div></div>`;
+    <h3>Taslaklar</h3><p class="alt">Düzenlemeye devam etmek için bir taslağa tıkla. ☁ = sunucudaki Drafts.</p>
+    <div class="tliste">${govde}</div>
+    <div class="onayed"><button class="btn" id="tkapat">Kapat</button><button class="btn" id="tsun">☁ Sunucudan getir</button></div>
+    <p class="not" id="tdurum"></p></div></div>`;
   $('#tkapat').onclick = () => m.innerHTML = '';
-  m.querySelectorAll('.tsat').forEach(el => el.onclick = e => {
+  $('#tsun').onclick = async () => {
+    $('#tsun').disabled = true; $('#tdurum').textContent = 'Sunucudaki Drafts klasörleri taranıyor…';
+    const hep = [];
+    for (const h of S.hesaplar) { const r = await window.imapi.taslakSunucuGetir(h.id); if (r && r.liste) hep.push(...r.liste); }
+    hep.sort((a, b) => b.ts - a.ts); taslakModal(hep);
+  };
+  m.querySelectorAll('.tsat[data-id]').forEach(el => el.onclick = e => {
     if (e.target.closest('.tsil')) return;
     const t = l.find(x => x.id === el.dataset.id); if (!t) return;
-    m.innerHTML = ''; yazModal({ kime: t.kime, konu: t.konu, html: t.html, ekYollar: t.ekYollar, inReplyTo: t.inReplyTo, references: t.references, taslakId: t.id }, t.hid);
+    m.innerHTML = ''; yazModal({ kime: t.kime, konu: t.konu, html: t.html, ekYollar: t.ekYollar, inReplyTo: t.inReplyTo, references: t.references, taslakId: t.id, sunucuYol: t.sunucuYol, sunucuUid: t.sunucuUid }, t.hid);
   });
-  m.querySelectorAll('.tsil').forEach(b => b.onclick = async e => { e.stopPropagation(); await window.imapi.taslakSil(b.dataset.sil); taslakModal(); });
+  m.querySelectorAll('.tsat[data-si]').forEach(el => el.onclick = () => {
+    const t = sunucu[+el.dataset.si]; if (!t) return;
+    m.innerHTML = ''; yazModal({ kime: t.kime, konu: t.konu, html: t.html, sunucuYol: t.sunucuYol, sunucuUid: t.sunucuUid }, t.hid);
+  });
+  m.querySelectorAll('.tsil').forEach(b => b.onclick = async e => { e.stopPropagation(); await window.imapi.taslakSil(b.dataset.sil); taslakModal(sunucu); });
 }
 
 function hesapModal() {

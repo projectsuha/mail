@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('imapi', {
   taslaklar: () => ipcRenderer.invoke('taslaklar'),
   taslakKaydet: (t) => ipcRenderer.invoke('taslak-kaydet', t),
   taslakSil: (id) => ipcRenderer.invoke('taslak-sil', id),
+  taslakSunucuGetir: (hid) => ipcRenderer.invoke('taslak-sunucu-getir', hid),
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
   onbellek: (id, klasor) => ipcRenderer.invoke('onbellek', id, klasor),
   gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
