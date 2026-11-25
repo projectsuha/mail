@@ -119,3 +119,15 @@ button{font:inherit;cursor:pointer}
 .icerik{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .kutu textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-bottom:1.6px solid rgba(0,0,0,.42);border-radius:5px;background:var(--bg2);color:var(--fg);font:inherit;outline:0;resize:vertical}
 .kutu textarea:focus{border-bottom-color:var(--acc)}
+
+/* Zengin HTML yazma editörü */
+.arac{display:flex;align-items:center;gap:3px;padding:5px 6px;border:1px solid var(--line);border-bottom:0;border-radius:7px 7px 0 0;background:var(--bg3);flex-wrap:wrap}
+.ab{border:0;background:none;color:var(--fg2);border-radius:5px;min-width:30px;height:28px;padding:0 7px;font-size:13.5px;line-height:1}
+.ab:hover{background:var(--bg2);color:var(--fg)}
+.ab b,.ab i,.ab u{pointer-events:none}
+.abol{width:1px;height:18px;background:var(--line);margin:0 3px}
+.editor{min-height:170px;max-height:40vh;overflow-y:auto;padding:11px 13px;border:1px solid var(--line);border-bottom:1.6px solid rgba(0,0,0,.42);border-radius:0 0 7px 7px;background:var(--bg2);color:var(--fg);font:14px/1.5 inherit;outline:0}
+.editor:focus{border-bottom-color:var(--acc)}
+.editor a{color:var(--acc)}
+.editor blockquote{margin:6px 0;padding-left:12px;border-left:3px solid var(--line);color:var(--fg2)}
+:root[data-theme="dark"] .editor,:root[data-theme="dark"] .arac{border-color:rgba(255,255,255,.12)}

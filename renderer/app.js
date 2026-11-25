@@ -200,14 +200,45 @@ function yazModal(on = {}, gonderHid) {
     <p class="alt">Gönderen: <b>${esc(h ? (h.ad || h.eposta) : '')}</b></p>
     <label class="alan">Kime</label><input id="kime" value="${esc(on.kime || '')}" placeholder="alici@ornek.com">
     <label class="alan">Konu</label><input id="konu" value="${esc(on.konu || '')}">
-    <label class="alan">İleti</label><textarea id="metin" rows="8" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--fg);resize:vertical">${esc((on.govde || '') + (h && h.imza ? '\n\n-- \n' + h.imza : ''))}</textarea>
+    <label class="alan">İleti</label>
+    <div class="arac" id="arac">
+      <button type="button" class="ab" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
+      <button type="button" class="ab" data-cmd="italic" title="Eğik (Ctrl+I)"><i>I</i></button>
+      <button type="button" class="ab" data-cmd="underline" title="Altı çizili (Ctrl+U)"><u>U</u></button>
+      <span class="abol"></span>
+      <button type="button" class="ab" data-cmd="insertUnorderedList" title="Madde listesi">• —</button>
+      <button type="button" class="ab" data-cmd="insertOrderedList" title="Numaralı liste">1. —</button>
+      <span class="abol"></span>
+      <button type="button" class="ab" data-cmd="bag" title="Bağlantı ekle">🔗</button>
+      <button type="button" class="ab" data-cmd="removeFormat" title="Biçimi temizle">⌫</button>
+    </div>
+    <div id="editor" class="editor" contenteditable="true" spellcheck="true"></div>
     <div class="ekcubuk"><button class="btn sm" id="ekBtn">📎 Dosya ekle</button><span id="ekAd" class="not"></span></div>
     <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn ana" id="yolla">Gönder</button></div>
     <p class="not" id="durum"></p></div></div>`;
   $('#vaz').onclick = () => m.innerHTML = '';
+  // Zengin editör başlangıç içeriği (yanıt/ilet gövdesi + imza)
+  const nl2br = s => esc(s).replace(/\n/g, '<br>');
+  const ed = $('#editor');
+  const parc = [];
+  if (on.govde) parc.push(nl2br(on.govde.replace(/^\n+/, '')));
+  if (h && h.imza) parc.push('-- <br>' + nl2br(h.imza));
+  ed.innerHTML = '<div><br></div>' + (parc.length ? '<div>' + parc.join('</div><div><br></div><div>') + '</div>' : '');
+  // İmleci en üste koy
+  ed.focus(); const sel = window.getSelection(); const rng = document.createRange();
+  rng.setStart(ed.firstChild, 0); rng.collapse(true); sel.removeAllRanges(); sel.addRange(rng);
+  // Araç çubuğu
+  $('#arac').onmousedown = e => { if (e.target.closest('.ab')) e.preventDefault(); };
+  $('#arac').onclick = e => {
+    const b = e.target.closest('.ab'); if (!b) return;
+    const cmd = b.dataset.cmd; ed.focus();
+    if (cmd === 'bag') { const u = prompt('Bağlantı adresi (https://…)'); if (u) document.execCommand('createLink', false, u.trim()); }
+    else document.execCommand(cmd, false, null);
+  };
   $('#ekBtn').onclick = async () => { const y = await window.imapi.dosyaSec(); if (y && y.length) { yazEkler = yazEkler.concat(y); $('#ekAd').textContent = yazEkler.map(p => p.split(/[\\/]/).pop()).join(', '); } };
   $('#yolla').onclick = async () => {
-    const veri = { kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), metin: $('#metin').value, inReplyTo: on.inReplyTo, references: on.references, ekYollar: yazEkler };
+    const html = `<div style="font-family:Segoe UI,system-ui,sans-serif;font-size:14px;color:#1a1a1a">${ed.innerHTML}</div>`;
+    const veri = { kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), metin: ed.innerText, html, inReplyTo: on.inReplyTo, references: on.references, ekYollar: yazEkler };
     if (!veri.kime) { $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = 'Alıcı gerekli.'; return; }
     $('#yolla').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Gönderiliyor…';
     const r = await window.imapi.gonder(hid, veri);

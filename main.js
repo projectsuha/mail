@@ -194,6 +194,7 @@ ipcMain.handle('gonder', async (_e, id, m) => {
     const mail = { from: { name: h.ad || h.eposta, address: h.eposta }, to: m.kime, subject: m.konu,
       text: m.metin || '', inReplyTo: m.inReplyTo || undefined, references: m.references || undefined,
       attachments: (m.ekYollar || []).map(p => ({ path: p })) };
+    if (m.html) mail.html = m.html;
     const _t = await tasiyici(h); await _t.sendMail(mail);
     // Gönderilmiş'e kopya (IMAP append) — başarısızsa yut, gönderme asıl iş
     try {
