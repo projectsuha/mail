@@ -35,6 +35,7 @@ function render() {
       <div class="bas"><h1>Mail · IMAP</h1>
         ${!S.tum && S.hid ? '<button class="ekle ikon" id="ayarBtn" title="Hesap ayarları (imza)">⚙</button>' : ''}
         <button class="ekle ikon" id="temaBtn" title="Tema">◑</button>
+        <button class="ekle ikon" id="taslakListeBtn" title="Taslaklar">🗂</button>
         <button class="ekle ikon" id="yeniBtn" title="Yeni e-posta">✎</button>
         <button class="ekle" id="ekleBtn">+ Hesap</button></div>
       <div class="hesaplar" id="hesaplar"></div>
@@ -46,6 +47,7 @@ function render() {
   </div>`;
   $('#ekleBtn').onclick = hesapModal;
   $('#yeniBtn').onclick = () => yazModal();
+  $('#taslakListeBtn').onclick = taslakModal;
   $('#temaBtn').onclick = temaDeg; temaIkon();
   if ($('#ayarBtn')) $('#ayarBtn').onclick = () => ayarModal(S.hid);
   if ($('#yenileBtn')) $('#yenileBtn').onclick = () => yukleGelen();
@@ -215,19 +217,25 @@ function yazModal(on = {}, gonderHid) {
     </div>
     <div id="editor" class="editor" contenteditable="true" spellcheck="true"></div>
     <div class="ekcubuk"><button class="btn sm" id="ekBtn">📎 Dosya ekle</button><span id="ekAd" class="not"></span></div>
-    <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn ana" id="yolla">Gönder</button></div>
+    <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn" id="taslakBtn">💾 Taslak</button><button class="btn ana" id="yolla">Gönder</button></div>
     <p class="not" id="durum"></p></div></div>`;
+  let taslakId = on.taslakId || null;
   $('#vaz').onclick = () => m.innerHTML = '';
-  // Zengin editör başlangıç içeriği (yanıt/ilet gövdesi + imza)
+  // Zengin editör başlangıç içeriği (taslak geri yükleme > yanıt/ilet gövdesi + imza)
   const nl2br = s => esc(s).replace(/\n/g, '<br>');
   const ed = $('#editor');
-  const parc = [];
-  if (on.govde) parc.push(nl2br(on.govde.replace(/^\n+/, '')));
-  if (h && h.imza) parc.push('-- <br>' + nl2br(h.imza));
-  ed.innerHTML = '<div><br></div>' + (parc.length ? '<div>' + parc.join('</div><div><br></div><div>') + '</div>' : '');
+  if (on.ekYollar && on.ekYollar.length) { yazEkler = on.ekYollar.slice(); $('#ekAd').textContent = yazEkler.map(p => p.split(/[\\/]/).pop()).join(', '); }
+  if (on.html != null) {
+    ed.innerHTML = on.html || '<div><br></div>';
+  } else {
+    const parc = [];
+    if (on.govde) parc.push(nl2br(on.govde.replace(/^\n+/, '')));
+    if (h && h.imza) parc.push('-- <br>' + nl2br(h.imza));
+    ed.innerHTML = '<div><br></div>' + (parc.length ? '<div>' + parc.join('</div><div><br></div><div>') + '</div>' : '');
+  }
   // İmleci en üste koy
   ed.focus(); const sel = window.getSelection(); const rng = document.createRange();
-  rng.setStart(ed.firstChild, 0); rng.collapse(true); sel.removeAllRanges(); sel.addRange(rng);
+  rng.setStart(ed.firstChild || ed, 0); rng.collapse(true); sel.removeAllRanges(); sel.addRange(rng);
   // Araç çubuğu
   $('#arac').onmousedown = e => { if (e.target.closest('.ab')) e.preventDefault(); };
   // Görsel yerleştirme (data-URL olarak; gönderimde CID'e çevrilir)
@@ -243,6 +251,11 @@ function yazModal(on = {}, gonderHid) {
   ed.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.items].some(x => x.kind === 'file')) e.preventDefault(); });
   ed.addEventListener('drop', e => { const f = e.dataTransfer && [...e.dataTransfer.files].filter(x => /^image\//.test(x.type)); if (f && f.length) { e.preventDefault(); f.forEach(resimKoy); } });
   $('#ekBtn').onclick = async () => { const y = await window.imapi.dosyaSec(); if (y && y.length) { yazEkler = yazEkler.concat(y); $('#ekAd').textContent = yazEkler.map(p => p.split(/[\\/]/).pop()).join(', '); } };
+  $('#taslakBtn').onclick = async () => {
+    const t = { id: taslakId, hid, kime: $('#kime').value.trim(), konu: $('#konu').value.trim(), html: ed.innerHTML, ozet: ed.innerText.trim().slice(0, 80), ekYollar: yazEkler, inReplyTo: on.inReplyTo, references: on.references };
+    const r = await window.imapi.taslakKaydet(t); taslakId = r.id;
+    $('#durum').style.color = 'var(--acc)'; $('#durum').textContent = 'Taslak kaydedildi ✓'; setTimeout(() => { if ($('#durum')) $('#durum').textContent = ''; }, 1600);
+  };
   $('#yolla').onclick = async () => {
     // Gömülü görselleri (data:) CID eklerine çevir
     const gomuller = []; const doc = new DOMParser().parseFromString(ed.innerHTML, 'text/html');
@@ -253,8 +266,33 @@ function yazModal(on = {}, gonderHid) {
     $('#yolla').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Gönderiliyor…';
     const r = await window.imapi.gonder(hid, veri);
     if (r.hata) { $('#yolla').disabled = false; $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = r.hata; return; }
+    if (taslakId) { try { await window.imapi.taslakSil(taslakId); } catch {} }
     $('#durum').style.color = 'var(--acc)'; $('#durum').textContent = 'Gönderildi ✓'; setTimeout(() => m.innerHTML = '', 900);
   };
+}
+
+// Taslaklar listesi
+async function taslakModal() {
+  const m = $('#modal');
+  const l = await window.imapi.taslaklar();
+  const hesapAd = id => { const h = S.hesaplar.find(x => x.id === id); return h ? (h.ad || h.eposta) : '—'; };
+  const sat = l.length ? l.map(t => `<div class="tsat" data-id="${t.id}">
+      <div class="ti"><b>${esc(t.konu || '(konu yok)')}</b><span>${esc(tarih(t.ts, false))}</span></div>
+      <div class="tk">${esc(t.kime || 'alıcı yok')} · ${esc(hesapAd(t.hid))}</div>
+      <div class="tk2">${esc(t.ozet || '')}</div>
+      <button class="tsil" data-sil="${t.id}" title="Sil">🗑</button>
+    </div>`).join('') : '<p class="not">Kayıtlı taslak yok.</p>';
+  m.innerHTML = `<div class="ort"><div class="kutu">
+    <h3>Taslaklar</h3><p class="alt">Düzenlemeye devam etmek için bir taslağa tıkla.</p>
+    <div class="tliste">${sat}</div>
+    <div class="onayed"><button class="btn" id="tkapat">Kapat</button></div></div></div>`;
+  $('#tkapat').onclick = () => m.innerHTML = '';
+  m.querySelectorAll('.tsat').forEach(el => el.onclick = e => {
+    if (e.target.closest('.tsil')) return;
+    const t = l.find(x => x.id === el.dataset.id); if (!t) return;
+    m.innerHTML = ''; yazModal({ kime: t.kime, konu: t.konu, html: t.html, ekYollar: t.ekYollar, inReplyTo: t.inReplyTo, references: t.references, taslakId: t.id }, t.hid);
+  });
+  m.querySelectorAll('.tsil').forEach(b => b.onclick = async e => { e.stopPropagation(); await window.imapi.taslakSil(b.dataset.sil); taslakModal(); });
 }
 
 function hesapModal() {

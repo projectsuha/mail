@@ -82,6 +82,19 @@ ipcMain.handle('hesap-ekle', (_e, v) => {
 ipcMain.handle('hesap-sil', (_e, id) => { hesaplariYaz(hesaplariOku().filter(h => h.id !== id)); return true; });
 ipcMain.handle('hesap-guncelle', (_e, id, v) => { const l = hesaplariOku(); const h = l.find(x => x.id === id); if (h) { if (v.ad != null) h.ad = v.ad; if (v.imza != null) h.imza = v.imza; hesaplariYaz(l); } return h ? guvenli(h) : null; });
 
+// Taslaklar (yerel JSON; editör HTML'i ham saklanır)
+const taslakDosya = () => path.join(app.getPath('userData'), 'taslaklar.json');
+function taslaklarOku() { try { return JSON.parse(fs.readFileSync(taslakDosya(), 'utf8')); } catch { return []; } }
+function taslaklarYaz(l) { try { fs.writeFileSync(taslakDosya(), JSON.stringify(l)); } catch {} }
+ipcMain.handle('taslaklar', () => taslaklarOku().sort((a, b) => b.ts - a.ts));
+ipcMain.handle('taslak-kaydet', (_e, t) => {
+  const l = taslaklarOku(); const id = t.id || 't' + Date.now() + Math.random().toString(36).slice(2, 6);
+  const kayit = { ...t, id, ts: Date.now() };
+  const i = l.findIndex(x => x.id === id); if (i >= 0) l[i] = kayit; else l.push(kayit);
+  taslaklarYaz(l); return { id };
+});
+ipcMain.handle('taslak-sil', (_e, id) => { taslaklarYaz(taslaklarOku().filter(x => x.id !== id)); return { ok: true }; });
+
 // OAuth: tarayıcıda giriş yap (loopback), kodu jetona çevir, hesabı kaydet
 ipcMain.handle('oauth-baslat', async (_e, saglayici, clientId, clientSecret, eposta) => {
   const cfg = OAUTH[saglayici]; if (!cfg) return { hata: 'Bilinmeyen sağlayıcı' };
