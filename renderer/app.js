@@ -12,7 +12,7 @@ const klAd = (yol, ozel) => KLAD[ozel] || KLAD[yol] || yol.split(/[\/.]/).pop();
 const boyutYaz = b => !b ? '' : b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const S = { hesaplar: [], hid: null, klasorler: [], klasor: 'INBOX', mesajlar: [], uid: null, yuk: false, q: '' };
 
-async function init() { S.hesaplar = await window.imapi.hesaplar(); if (S.hesaplar[0]) S.hid = S.hesaplar[0].id; render(); if (S.hid) await secHesap(S.hid); }
+async function init() { S.hesaplar = await window.imapi.hesaplar(); if (S.hesaplar[0]) S.hid = S.hesaplar[0].id; render(); otoBasla(); if (S.hid) await secHesap(S.hid); }
 
 function render() {
   if (!S.hesaplar.length) { ekranBos(); return; }
@@ -23,7 +23,7 @@ function render() {
         <button class="ekle" id="yeniBtn" title="Yeni e-posta">✎</button>
         <button class="ekle" id="ekleBtn">+ Hesap</button></div>
       <div class="hesaplar" id="hesaplar"></div>
-      <div class="klsat"><select id="klasor"></select><button class="yeni-ikon" id="yenileBtn" title="Yenile">⟳</button></div>
+      <div class="klsat"><select id="klasor"></select><span id="sayac" class="sayac"></span><button class="yeni-ikon" id="yenileBtn" title="Yenile">⟳</button></div>
       <div class="arasat"><input id="ara" placeholder="Bu klasörde ara" value="${esc(S.q)}"></div>
       <div class="liste" id="liste"></div>
     </div>
@@ -72,11 +72,27 @@ async function hesapSil(id) {
   render(); if (S.hid) await secHesap(S.hid);
 }
 async function yukleGelen() {
-  S.yuk = true; S.mesajlar = []; S.uid = null; cizListe(); cizOkuma();
-  const r = await window.imapi.gelenler(S.hid, S.klasor, 50);
+  S.uid = null;
+  const c = await window.imapi.onbellek(S.hid, S.klasor);   // 1) anında önbellek
+  if (c && c.liste && c.liste.length) { S.mesajlar = c.liste; S.yuk = false; } else { S.yuk = true; S.mesajlar = []; }
+  cizListe(); cizOkuma(); sayac();
+  const r = await window.imapi.gelenler(S.hid, S.klasor, 50);   // 2) ağdan tazele
   S.yuk = false;
-  if (r.hata) { if ($('#liste')) $('#liste').innerHTML = `<div class="uyari">${esc(r.hata)}</div>`; return; }
-  S.mesajlar = r.liste || []; cizListe();
+  if (r.hata) { if (!S.mesajlar.length && $('#liste')) $('#liste').innerHTML = `<div class="uyari">${esc(r.hata)} <small>(çevrimdışı önbellek yok)</small></div>`; return; }
+  S.mesajlar = r.liste || []; cizListe(); sayac();
+}
+function sayac() {
+  const el = $('#sayac'); if (!el) return;
+  const n = S.mesajlar.filter(m => !m.okundu).length;
+  el.textContent = n ? n + ' yeni' : ''; el.style.display = n ? '' : 'none';
+}
+let otoT = null;
+function otoBasla() { if (otoT) clearInterval(otoT); otoT = setInterval(sessizYenile, 60000); }
+async function sessizYenile() {
+  if (!S.hid || document.querySelector('.ort') || S.yuk) return;
+  const r = await window.imapi.gelenler(S.hid, S.klasor, 50);
+  if (r.hata || !r.liste) return;
+  S.mesajlar = r.liste; cizListe(); sayac();
 }
 function gorunur() {
   if (!S.q.trim()) return S.mesajlar;

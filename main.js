@@ -43,6 +43,13 @@ async function ileKlasor(h, klasor, fn) {
   try { return await fn(c); } finally { lock.release(); try { await c.logout(); } catch {} }
 }
 
+// ── Önbellek (dosya): klasör anında açılsın, çevrimdışında da liste görünsün ──
+function onbDizin() { const d = path.join(app.getPath('userData'), 'onbellek'); try { fs.mkdirSync(d, { recursive: true }); } catch {} return d; }
+const onbYol = (hid, klasor) => path.join(onbDizin(), hid + '_' + Buffer.from(klasor || 'INBOX').toString('hex') + '.json');
+function onbYaz(hid, klasor, liste) { try { fs.writeFileSync(onbYol(hid, klasor), JSON.stringify({ liste, at: Date.now() })); } catch {} }
+function onbOku(hid, klasor) { try { return JSON.parse(fs.readFileSync(onbYol(hid, klasor), 'utf8')); } catch { return null; } }
+ipcMain.handle('onbellek', (_e, hid, klasor) => onbOku(hid, klasor));
+
 ipcMain.handle('hesaplar', () => hesaplariOku().map(guvenli));
 ipcMain.handle('hesap-ekle', (_e, v) => {
   const l = hesaplariOku();
@@ -79,7 +86,9 @@ ipcMain.handle('gelenler', async (_e, id, klasor = 'INBOX', limit = 50) => {
             okundu: msg.flags ? msg.flags.has('\\Seen') : true, yildiz: msg.flags ? msg.flags.has('\\Flagged') : false });
         }
       }
-      return { liste: out.reverse() };
+      const liste = out.reverse();
+      onbYaz(id, klasor, liste);
+      return { liste };
     });
   } catch (e) { return { hata: cevir(e) }; }
 });

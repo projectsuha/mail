@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('imapi', {
   hesapEkle: (veri) => ipcRenderer.invoke('hesap-ekle', veri),
   hesapSil: (id) => ipcRenderer.invoke('hesap-sil', id),
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
+  onbellek: (id, klasor) => ipcRenderer.invoke('onbellek', id, klasor),
   gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
   mesaj: (id, klasor, uid) => ipcRenderer.invoke('mesaj', id, klasor, uid),
   ekIndir: (id, klasor, uid, idx) => ipcRenderer.invoke('ek-indir', id, klasor, uid, idx),
