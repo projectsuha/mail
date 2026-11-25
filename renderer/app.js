@@ -196,26 +196,56 @@ function hesapModal() {
   const m = $('#modal');
   m.innerHTML = `<div class="ort"><div class="kutu">
     <h3>Hesap ekle</h3>
-    <p class="alt">Parolanı yalnız sen girersin; bu cihazda şifreli saklanır, hiçbir yere gönderilmez.</p>
-    <label class="alan">Sağlayıcı</label>
-    <select id="sg">${Object.entries(SAG).map(([k, v]) => `<option value="${k}">${v.ad}</option>`).join('')}</select>
-    <label class="alan">Görünen ad</label><input id="ad" placeholder="Örn. Yandex hesabım">
-    <label class="alan">E-posta adresi</label><input id="eposta" type="email" placeholder="ad@yandex.com" autocomplete="off">
-    <div class="cift"><div><label class="alan">IMAP sunucusu</label><input id="host"></div><div><label class="alan">Port</label><input id="port" value="993"></div></div>
-    <div class="cift"><div><label class="alan">SMTP sunucusu</label><input id="smtpHost"></div><div><label class="alan">Port</label><input id="smtpPort" value="465"></div></div>
-    <label class="alan">Uygulama parolası</label><input id="parola" type="password" placeholder="sağlayıcıdan üretilen parola" autocomplete="off">
-    <p class="not" id="not"></p>
+    <label class="alan">Giriş yöntemi</label>
+    <select id="yontem"><option value="parola">Uygulama parolası</option><option value="oauth">OAuth (Google · Outlook · Yandex)</option></select>
+    <div id="govdeAlan"></div>
     <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn ana" id="kaydet">Bağlan ve kaydet</button></div>
     <p class="not" id="durum" style="color:var(--danger)"></p></div></div>`;
-  const sg = $('#sg'), uy = () => { const v = SAG[sg.value]; $('#host').value = v.host; $('#port').value = v.port; $('#smtpHost').value = v.smtpHost; $('#smtpPort').value = v.smtpPort; $('#not').innerHTML = v.not; };
-  sg.onchange = uy; uy();
   $('#vaz').onclick = () => m.innerHTML = '';
-  $('#kaydet').onclick = async () => {
-    const v = { ad: $('#ad').value.trim(), eposta: $('#eposta').value.trim(), host: $('#host').value.trim(), port: $('#port').value.trim(), smtpHost: $('#smtpHost').value.trim(), smtpPort: $('#smtpPort').value.trim(), parola: $('#parola').value };
-    if (!v.eposta || !v.host || !v.parola) { $('#durum').textContent = 'E-posta, IMAP sunucusu ve parola gerekli.'; return; }
-    $('#kaydet').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Kaydediliyor…';
-    const h = await window.imapi.hesapEkle(v);
-    S.hesaplar = await window.imapi.hesaplar(); m.innerHTML = ''; render(); await secHesap(h.id);
-  };
+  const yont = $('#yontem');
+  yont.onchange = ciz; ciz();
+
+  function ciz() {
+    if (yont.value === 'oauth') {
+      $('#govdeAlan').innerHTML = `
+        <p class="alt">Google/Outlook/Yandex konsolunda bir <b>OAuth uygulaması</b> (Masaüstü) kaydedip <b>client_id</b> ve <b>client_secret</b> al; parola girmeden tarayıcıdan giriş yapılır.</p>
+        <label class="alan">Sağlayıcı</label>
+        <select id="osg"><option value="gmail">Gmail</option><option value="outlook">Outlook</option><option value="yandex">Yandex</option></select>
+        <label class="alan">E-posta adresi</label><input id="oeposta" type="email" placeholder="ad@gmail.com" autocomplete="off">
+        <label class="alan">Client ID</label><input id="cid" autocomplete="off">
+        <label class="alan">Client secret</label><input id="csec" type="password" autocomplete="off">
+        <p class="not">Kapsam tam posta erişimi (IMAP/SMTP) olmalı. İlk girişte tarayıcıda hesabını seçip izin verirsin.</p>`;
+      $('#kaydet').textContent = 'Tarayıcıda giriş yap';
+      $('#kaydet').onclick = async () => {
+        const sag = $('#osg').value, eposta = $('#oeposta').value.trim(), cid = $('#cid').value.trim(), csec = $('#csec').value.trim();
+        if (!eposta || !cid || !csec) { $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = 'E-posta, client_id ve client_secret gerekli.'; return; }
+        $('#kaydet').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Tarayıcı açıldı — giriş yapıp izin ver…';
+        const r = await window.imapi.oauthBaslat(sag, cid, csec, eposta);
+        if (r.hata) { $('#kaydet').disabled = false; $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = r.hata; return; }
+        S.hesaplar = await window.imapi.hesaplar(); m.innerHTML = ''; render(); await secHesap(r.hesap.id);
+      };
+    } else {
+      $('#govdeAlan').innerHTML = `
+        <p class="alt">Parolanı yalnız sen girersin; bu cihazda şifreli saklanır, hiçbir yere gönderilmez.</p>
+        <label class="alan">Sağlayıcı</label>
+        <select id="sg">${Object.entries(SAG).map(([k, v]) => `<option value="${k}">${v.ad}</option>`).join('')}</select>
+        <label class="alan">Görünen ad</label><input id="ad" placeholder="Örn. Yandex hesabım">
+        <label class="alan">E-posta adresi</label><input id="eposta" type="email" placeholder="ad@yandex.com" autocomplete="off">
+        <div class="cift"><div><label class="alan">IMAP sunucusu</label><input id="host"></div><div><label class="alan">Port</label><input id="port" value="993"></div></div>
+        <div class="cift"><div><label class="alan">SMTP sunucusu</label><input id="smtpHost"></div><div><label class="alan">Port</label><input id="smtpPort" value="465"></div></div>
+        <label class="alan">Uygulama parolası</label><input id="parola" type="password" placeholder="sağlayıcıdan üretilen parola" autocomplete="off">
+        <p class="not" id="not"></p>`;
+      $('#kaydet').textContent = 'Bağlan ve kaydet';
+      const sg = $('#sg'), uy = () => { const v = SAG[sg.value]; $('#host').value = v.host; $('#port').value = v.port; $('#smtpHost').value = v.smtpHost; $('#smtpPort').value = v.smtpPort; $('#not').innerHTML = v.not; };
+      sg.onchange = uy; uy();
+      $('#kaydet').onclick = async () => {
+        const v = { ad: $('#ad').value.trim(), eposta: $('#eposta').value.trim(), host: $('#host').value.trim(), port: $('#port').value.trim(), smtpHost: $('#smtpHost').value.trim(), smtpPort: $('#smtpPort').value.trim(), parola: $('#parola').value };
+        if (!v.eposta || !v.host || !v.parola) { $('#durum').style.color = 'var(--danger)'; $('#durum').textContent = 'E-posta, IMAP sunucusu ve parola gerekli.'; return; }
+        $('#kaydet').disabled = true; $('#durum').style.color = 'var(--fg3)'; $('#durum').textContent = 'Kaydediliyor…';
+        const h = await window.imapi.hesapEkle(v);
+        S.hesaplar = await window.imapi.hesaplar(); m.innerHTML = ''; render(); await secHesap(h.id);
+      };
+    }
+  }
 }
 init();

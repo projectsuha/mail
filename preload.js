@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('imapi', {
   hesaplar: () => ipcRenderer.invoke('hesaplar'),
   hesapEkle: (veri) => ipcRenderer.invoke('hesap-ekle', veri),
+  oauthBaslat: (saglayici, clientId, clientSecret, eposta) => ipcRenderer.invoke('oauth-baslat', saglayici, clientId, clientSecret, eposta),
   hesapSil: (id) => ipcRenderer.invoke('hesap-sil', id),
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
   onbellek: (id, klasor) => ipcRenderer.invoke('onbellek', id, klasor),
