@@ -12,6 +12,10 @@ const klAd = (yol, ozel) => KLAD[ozel] || KLAD[yol] || yol.split(/[\/.]/).pop();
 const boyutYaz = b => !b ? '' : b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const RENK = ['#2f6bb3', '#2e9e52', '#c4621c', '#8e4ec6', '#c42b63', '#0f9b9b'];
 const renkOf = id => RENK[(S.hesaplar.findIndex(h => h.id === id) + RENK.length) % RENK.length];
+const AVP = ['#2f6bb3', '#2e9e52', '#c4621c', '#8e4ec6', '#c42b63', '#0f9b9b', '#b58900', '#4a6da7'];
+function avRenk(s) { s = s || '?'; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AVP[h % AVP.length]; }
+const harf = s => esc((((s || '?').trim()[0]) || '?').toUpperCase());
+let bilinen = null;   // bildirim için görülen uid'ler
 const S = { hesaplar: [], hid: null, tum: false, klasorler: [], klasor: 'INBOX', mesajlar: [], uid: null, mhid: null, yuk: false, q: '' };
 const enf = m => S.tum ? { hid: m.hid, klasor: 'INBOX' } : { hid: S.hid, klasor: S.klasor };
 
@@ -20,7 +24,7 @@ function temaUygula() { const t = localStorage.getItem('tema') || 'auto'; if (t 
 function temaDeg() { const sira = ['auto', 'light', 'dark']; const now = localStorage.getItem('tema') || 'auto'; const n = sira[(sira.indexOf(now) + 1) % 3]; localStorage.setItem('tema', n); temaUygula(); temaIkon(); }
 function temaIkon() { const b = $('#temaBtn'); if (b) { const t = localStorage.getItem('tema') || 'auto'; b.textContent = t === 'dark' ? '🌙' : t === 'light' ? '☀' : '◑'; b.title = 'Tema: ' + (t === 'auto' ? 'otomatik' : t === 'light' ? 'açık' : 'koyu'); } }
 
-async function init() { temaUygula(); S.hesaplar = await window.imapi.hesaplar(); if (S.hesaplar[0]) S.hid = S.hesaplar[0].id; render(); otoBasla(); if (S.hid) await secHesap(S.hid); }
+async function init() { temaUygula(); try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} document.addEventListener('keydown', ks); S.hesaplar = await window.imapi.hesaplar(); if (S.hesaplar[0]) S.hid = S.hesaplar[0].id; render(); otoBasla(); if (S.hid) await secHesap(S.hid); }
 
 function render() {
   if (!S.hesaplar.length) { ekranBos(); return; }
@@ -29,6 +33,7 @@ function render() {
   <div class="kabuk">
     <div class="sol">
       <div class="bas"><h1>Mail · IMAP</h1>
+        ${!S.tum && S.hid ? '<button class="ekle ikon" id="ayarBtn" title="Hesap ayarları (imza)">⚙</button>' : ''}
         <button class="ekle ikon" id="temaBtn" title="Tema">◑</button>
         <button class="ekle ikon" id="yeniBtn" title="Yeni e-posta">✎</button>
         <button class="ekle" id="ekleBtn">+ Hesap</button></div>
@@ -42,6 +47,7 @@ function render() {
   $('#ekleBtn').onclick = hesapModal;
   $('#yeniBtn').onclick = () => yazModal();
   $('#temaBtn').onclick = temaDeg; temaIkon();
+  if ($('#ayarBtn')) $('#ayarBtn').onclick = () => ayarModal(S.hid);
   if ($('#yenileBtn')) $('#yenileBtn').onclick = () => yukleGelen();
   $('#ara').oninput = e => { S.q = e.target.value; cizListe(); };
   cizHesaplar(); if (!S.tum) cizKlasor(); cizListe(); cizOkuma();
@@ -92,15 +98,16 @@ async function yukleGelen() {
   if (S.tum) { S.yuk = true; S.mesajlar = []; cizListe(); cizOkuma();
     const r = await window.imapi.tumGelenler(25); S.yuk = false;
     if (r.hata) { if ($('#liste')) $('#liste').innerHTML = `<div class="uyari">${esc(r.hata)}</div>`; return; }
-    S.mesajlar = r.liste || []; cizListe(); sayac(); return;
+    S.mesajlar = r.liste || []; cizListe(); sayac(); tabanKur(); return;
   }
   const c = await window.imapi.onbellek(S.hid, S.klasor);
   if (c && c.liste && c.liste.length) { S.mesajlar = c.liste; S.yuk = false; } else { S.yuk = true; S.mesajlar = []; }
   cizListe(); cizOkuma(); sayac();
   const r = await window.imapi.gelenler(S.hid, S.klasor, 50); S.yuk = false;
   if (r.hata) { if (!S.mesajlar.length && $('#liste')) $('#liste').innerHTML = `<div class="uyari">${esc(r.hata)} <small>(çevrimdışı önbellek yok)</small></div>`; return; }
-  S.mesajlar = r.liste || []; cizListe(); sayac();
+  S.mesajlar = r.liste || []; cizListe(); sayac(); tabanKur();
 }
+function tabanKur() { bilinen = new Set(S.mesajlar.filter(m => !m.okundu).map(anahtarla)); }
 function sayac() { const el = $('#sayac'); if (!el) return; const n = S.mesajlar.filter(m => !m.okundu).length; el.textContent = n ? n + ' yeni' : ''; el.style.display = n ? '' : 'none'; }
 let otoT = null;
 function otoBasla() { if (otoT) clearInterval(otoT); otoT = setInterval(sessizYenile, 60000); }
@@ -108,7 +115,14 @@ async function sessizYenile() {
   if (document.querySelector('.ort') || S.yuk) return;
   let r; if (S.tum) r = await window.imapi.tumGelenler(25); else if (S.hid) r = await window.imapi.gelenler(S.hid, S.klasor, 50); else return;
   if (!r || r.hata || !r.liste) return;
+  bildirimKontrol(r.liste);
   S.mesajlar = r.liste; cizListe(); sayac();
+}
+const anahtarla = m => (m.hid || S.hid) + ':' + m.uid;
+function bildirimKontrol(liste) {
+  const yeni = liste.filter(m => !m.okundu);
+  if (bilinen) { const gelen = yeni.filter(m => !bilinen.has(anahtarla(m))); if (gelen.length) { try { const ilk = gelen[0]; new Notification(gelen.length > 1 ? gelen.length + ' yeni posta' : (ilk.kimden || ilk.adres || 'Yeni posta'), { body: gelen.length > 1 ? 'Suha Mail' : (ilk.konu || '') }); } catch {} } }
+  bilinen = new Set(yeni.map(anahtarla));
 }
 function gorunur() {
   if (!S.q.trim()) return S.mesajlar;
@@ -122,8 +136,11 @@ function cizListe() {
   if (!list.length) { el.innerHTML = `<div class="bos" style="height:auto;padding:36px 20px"><p>${S.q ? 'Sonuç yok.' : 'Bu klasör boş ya da bağlanılmadı.'}</p></div>`; return; }
   el.innerHTML = list.map((m, i) => `
     <button class="satir ${m.okundu ? '' : 'yeni'} ${m.uid === S.uid && (!S.tum || m.hid === S.mhid) ? 'on' : ''}" data-i="${i}">
-      <span class="u"><span class="kim">${m.okundu ? '' : '<span class="nokta"></span>'}${m.yildiz ? '<span class="yil">★</span>' : ''}${esc(m.kimden || m.adres)}</span><span class="t">${esc(tarih(m.tarih))}</span></span>
-      <span class="k">${S.tum ? `<span class="htag" style="color:${renkOf(m.hid)}">● ${esc(m.hesapAd)}</span> ` : ''}${esc(m.konu)}</span></button>`).join('');
+      <span class="av2" style="background:${avRenk(m.adres || m.kimden)}">${harf(m.kimden || m.adres)}</span>
+      <span class="icerik">
+        <span class="u"><span class="kim">${m.okundu ? '' : '<span class="nokta"></span>'}${m.yildiz ? '<span class="yil">★</span>' : ''}${esc(m.kimden || m.adres)}</span><span class="t">${esc(tarih(m.tarih))}</span></span>
+        <span class="k">${S.tum ? `<span class="htag" style="color:${renkOf(m.hid)}">● ${esc(m.hesapAd)}</span> ` : ''}${esc(m.konu)}</span>
+      </span></button>`).join('');
   el.querySelectorAll('.satir').forEach(b => b.onclick = () => { const m = list[+b.dataset.i]; S.uid = m.uid; S.mhid = m.hid; cizListe(); acMesaj(m); });
 }
 async function acMesaj(m0) {
@@ -136,7 +153,9 @@ async function acMesaj(m0) {
   $('#sag').innerHTML = `
     <div class="okbas">
       <button class="btn sm" id="yanitBtn">↩ Yanıtla</button>
-      <button class="btn sm" id="yilBtn">${m0.yildiz ? '★ Yıldızı kaldır' : '☆ Yıldızla'}</button>
+      <button class="btn sm" id="tumYanitBtn">⇋ Tümü</button>
+      <button class="btn sm" id="iletBtn">↪ İlet</button>
+      <button class="btn sm" id="yilBtn">${m0.yildiz ? '★' : '☆'}</button>
       <button class="btn sm" id="okunBtn">● Okunmadı</button>
       <span style="flex:1"></span>
       <button class="btn sm" id="silBtn">🗑 Sil</button></div>
@@ -145,7 +164,12 @@ async function acMesaj(m0) {
       <div class="meta"><b>${esc(m.kimden)}</b></div>
       <div class="meta">${esc(m.kime ? 'Kime: ' + m.kime : '')} · ${esc(tarih(m.tarih, true))}</div>
       ${ekler}<div class="govde">${govde}</div></div>`;
-  $('#yanitBtn').onclick = () => yazModal({ kime: m.kimdenAdres, konu: /^re:/i.test(m.konu) ? m.konu : 'Re: ' + m.konu, inReplyTo: m.messageId, references: ((m.references || '') + ' ' + (m.messageId || '')).trim() }, hid);
+  const refs = ((m.references || '') + ' ' + (m.messageId || '')).trim();
+  const reKonu = /^re:/i.test(m.konu) ? m.konu : 'Re: ' + m.konu;
+  const ownEp = ((S.hesaplar.find(x => x.id === hid) || {}).eposta || '').toLowerCase();
+  $('#yanitBtn').onclick = () => yazModal({ kime: m.kimdenAdres, konu: reKonu, inReplyTo: m.messageId, references: refs }, hid);
+  $('#tumYanitBtn').onclick = () => { const al = [m.kimdenAdres, ...(m.alicilar || [])].filter((a, i, arr) => a && a.toLowerCase() !== ownEp && arr.findIndex(x => x.toLowerCase() === a.toLowerCase()) === i); yazModal({ kime: al.join(', '), konu: reKonu, inReplyTo: m.messageId, references: refs }, hid); };
+  $('#iletBtn').onclick = () => { const alinti = `\n\n---------- İletilen ileti ----------\nKimden: ${m.kimden}\nTarih: ${tarih(m.tarih, true)}\nKonu: ${m.konu}\n\n${m.metin || ''}`; yazModal({ konu: /^fwd:/i.test(m.konu) ? m.konu : 'Fwd: ' + m.konu, govde: alinti }, hid); };
   $('#silBtn').onclick = () => eylemle(m0, 'sil');
   $('#yilBtn').onclick = () => eylemle(m0, m0.yildiz ? 'yildizKaldir' : 'yildiz');
   $('#okunBtn').onclick = () => eylemle(m0, 'okunmadi');
@@ -176,7 +200,7 @@ function yazModal(on = {}, gonderHid) {
     <p class="alt">Gönderen: <b>${esc(h ? (h.ad || h.eposta) : '')}</b></p>
     <label class="alan">Kime</label><input id="kime" value="${esc(on.kime || '')}" placeholder="alici@ornek.com">
     <label class="alan">Konu</label><input id="konu" value="${esc(on.konu || '')}">
-    <label class="alan">İleti</label><textarea id="metin" rows="8" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--fg);resize:vertical"></textarea>
+    <label class="alan">İleti</label><textarea id="metin" rows="8" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--fg);resize:vertical">${esc((on.govde || '') + (h && h.imza ? '\n\n-- \n' + h.imza : ''))}</textarea>
     <div class="ekcubuk"><button class="btn sm" id="ekBtn">📎 Dosya ekle</button><span id="ekAd" class="not"></span></div>
     <div class="onayed"><button class="btn" id="vaz">Vazgeç</button><button class="btn ana" id="yolla">Gönder</button></div>
     <p class="not" id="durum"></p></div></div>`;
@@ -248,4 +272,39 @@ function hesapModal() {
     }
   }
 }
+
+// İnce cila: hesap ayarları (görünen ad + imza)
+function ayarModal(hid) {
+  const h = S.hesaplar.find(x => x.id === hid); if (!h) return;
+  const m = $('#modal');
+  m.innerHTML = `<div class="ort"><div class="kutu">
+    <h3>Hesap ayarları</h3>
+    <p class="alt">${esc(h.eposta)}</p>
+    <label class="alan">Görünen ad</label><input id="aad" value="${esc(h.ad || '')}" placeholder="Örn. Sinan Erdoğan">
+    <label class="alan">İmza</label><textarea id="aimza" rows="4" placeholder="Her yeni e-postanın altına eklenir">${esc(h.imza || '')}</textarea>
+    <p class="not">İmza, yeni e-posta ve yanıtlarda metnin altına otomatik eklenir.</p>
+    <div class="onayed"><button class="btn" id="avaz">Vazgeç</button><button class="btn ana" id="akay">Kaydet</button></div>
+    <p class="not" id="adurum" style="color:var(--danger)"></p></div></div>`;
+  $('#avaz').onclick = () => m.innerHTML = '';
+  $('#akay').onclick = async () => {
+    const v = { ad: $('#aad').value.trim(), imza: $('#aimza').value };
+    $('#akay').disabled = true;
+    const r = await window.imapi.hesapGuncelle(hid, v);
+    if (r && r.hata) { $('#akay').disabled = false; $('#adurum').textContent = r.hata; return; }
+    S.hesaplar = await window.imapi.hesaplar(); m.innerHTML = ''; render();
+    if (S.tum) secTum(); else if (S.hid) secHesap(S.hid);
+  };
+}
+
+// İnce cila: klavye kısayolları
+function ks(e) {
+  const yaziyor = /^(input|textarea|select)$/i.test((e.target.tagName || ''));
+  if (e.key === 'Escape') { const m = $('#modal'); if (m && m.innerHTML) { m.innerHTML = ''; e.preventDefault(); } return; }
+  if (yaziyor) return;
+  if ($('#modal') && $('#modal').innerHTML) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') { e.preventDefault(); if (S.hid || S.tum) yazModal({}, S.hid); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); if (S.tum) secTum(); else if (S.hid) secHesap(S.hid); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && S.uid) { e.preventDefault(); const sb = $('#silBtn'); if (sb) sb.click(); }
+}
+
 init();

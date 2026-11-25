@@ -1,7 +1,7 @@
 {
   "name": "suha-mail-imap",
   "productName": "Suha Mail IMAP",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Suha Mail (IMAP) — kendi altyapımız, Google'a bağlı değil (deneme)",
   "author": "Sinan Erdoğan",
   "private": true,

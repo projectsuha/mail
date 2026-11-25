@@ -25,7 +25,7 @@ function hesaplariYaz(l) { try { fs.writeFileSync(hesapDosya(), JSON.stringify(l
 function sifrele(s) { try { if (safeStorage.isEncryptionAvailable()) return { enc: safeStorage.encryptString(s).toString('base64') }; } catch {} return { duz: s }; }
 function coz(o, encAd, duzAd) { try { if (o[encAd] && safeStorage.isEncryptionAvailable()) return safeStorage.decryptString(Buffer.from(o[encAd], 'base64')); } catch {} return o[duzAd] || ''; }
 const paroCoz = h => coz(h, 'paroEnc', 'paroDuz');
-const guvenli = h => ({ id: h.id, ad: h.ad, eposta: h.eposta, host: h.host, port: h.port, smtpHost: h.smtpHost, smtpPort: h.smtpPort, yontem: h.oauth ? 'oauth' : 'parola' });
+const guvenli = h => ({ id: h.id, ad: h.ad, eposta: h.eposta, host: h.host, port: h.port, smtpHost: h.smtpHost, smtpPort: h.smtpPort, imza: h.imza || '', yontem: h.oauth ? 'oauth' : 'parola' });
 const bul = id => hesaplariOku().find(x => x.id === id);
 
 // OAuth erişim jetonu (süresi geçtiyse refresh ile yenile, dosyaya yaz)
@@ -80,6 +80,7 @@ ipcMain.handle('hesap-ekle', (_e, v) => {
   l.push(h); hesaplariYaz(l); return guvenli(h);
 });
 ipcMain.handle('hesap-sil', (_e, id) => { hesaplariYaz(hesaplariOku().filter(h => h.id !== id)); return true; });
+ipcMain.handle('hesap-guncelle', (_e, id, v) => { const l = hesaplariOku(); const h = l.find(x => x.id === id); if (h) { if (v.ad != null) h.ad = v.ad; if (v.imza != null) h.imza = v.imza; hesaplariYaz(l); } return h ? guvenli(h) : null; });
 
 // OAuth: tarayıcıda giriş yap (loopback), kodu jetona çevir, hesabı kaydet
 ipcMain.handle('oauth-baslat', async (_e, saglayici, clientId, clientSecret, eposta) => {
@@ -159,6 +160,7 @@ ipcMain.handle('mesaj', async (_e, id, klasor, uid) => {
       return { konu: p.subject || '(konu yok)', kimden: p.from ? p.from.text : '',
         kimdenAdres: p.from && p.from.value && p.from.value[0] ? p.from.value[0].address : '',
         kime: p.to ? p.to.text : '', tarih: p.date, html: p.html || null, metin: p.text || '',
+        alicilar: [...((p.to && p.to.value) || []), ...((p.cc && p.cc.value) || [])].map(a => a.address).filter(Boolean),
         messageId: p.messageId || '', references: (p.references ? (Array.isArray(p.references) ? p.references.join(' ') : p.references) : ''),
         ekler: (p.attachments || []).map((a, i) => ({ i, ad: a.filename || ('ek-' + (i + 1)), boyut: a.size || (a.content ? a.content.length : 0), tur: a.contentType || '' })) };
     });
@@ -248,13 +250,19 @@ ipcMain.handle('isle', async (_e, id, klasor, uid, eylem, ekstra = {}) => {
 });
 
 let win = null;
+const pencereDosya = () => path.join(app.getPath('userData'), 'pencere.json');
+const pencereOku = () => { try { return JSON.parse(fs.readFileSync(pencereDosya(), 'utf8')); } catch { return {}; } };
+const pencereYaz = w => { try { const b = w.getNormalBounds(); fs.writeFileSync(pencereDosya(), JSON.stringify({ ...b, max: w.isMaximized() })); } catch {} };
 function createWindow() {
-  win = new BrowserWindow({ width: 1200, height: 820, minWidth: 440, minHeight: 560,
+  const st = pencereOku();
+  win = new BrowserWindow({ width: st.width || 1200, height: st.height || 820, x: st.x, y: st.y, minWidth: 440, minHeight: 560,
     title: 'Suha Mail (IMAP)', icon: path.join(__dirname, 'renderer', 'simge', 'mail.ico'),
     backgroundColor: '#f3f3f3', autoHideMenuBar: true, show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false } });
   Menu.setApplicationMenu(null);
+  if (st.max) win.maximize();
   win.once('ready-to-show', () => win.show());
+  win.on('close', () => pencereYaz(win));
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }

@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('imapi', {
   hesapEkle: (veri) => ipcRenderer.invoke('hesap-ekle', veri),
   oauthBaslat: (saglayici, clientId, clientSecret, eposta) => ipcRenderer.invoke('oauth-baslat', saglayici, clientId, clientSecret, eposta),
   hesapSil: (id) => ipcRenderer.invoke('hesap-sil', id),
+  hesapGuncelle: (id, v) => ipcRenderer.invoke('hesap-guncelle', id, v),
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
   onbellek: (id, klasor) => ipcRenderer.invoke('onbellek', id, klasor),
   gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
