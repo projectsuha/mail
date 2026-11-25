@@ -1,6 +1,6 @@
 // Suha Mail (IMAP) — kendi altyapımız (Google'a bağlı değil).
-// Aşama 1-2: klasörler + okuma + gönderme (SMTP). Çoklu hesap. Parola safeStorage ile şifreli.
-const { app, BrowserWindow, Menu, ipcMain, safeStorage, shell } = require('electron');
+// Aşama 1-3: klasörler + okuma + gönderme (SMTP) + ek dosya + işlemler (sil/okundu/yıldız).
+const { app, BrowserWindow, Menu, ipcMain, safeStorage, shell, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { ImapFlow } = require('imapflow');
@@ -36,6 +36,12 @@ function cevir(e) {
   if (/ECONNREFUSED|ETIMEDOUT|timeout|ECONNRESET/i.test(m)) return 'Bağlanılamadı — internet/port ya da güvenlik duvarı.';
   return 'Hata: ' + m;
 }
+// Tek bir bağlantıda iş yap (kilit al, çalıştır, çık)
+async function ileKlasor(h, klasor, fn) {
+  const c = istemci(h); await c.connect();
+  const lock = await c.getMailboxLock(klasor || 'INBOX');
+  try { return await fn(c); } finally { lock.release(); try { await c.logout(); } catch {} }
+}
 
 ipcMain.handle('hesaplar', () => hesaplariOku().map(guvenli));
 ipcMain.handle('hesap-ekle', (_e, v) => {
@@ -54,54 +60,65 @@ ipcMain.handle('klasorler', async (_e, id) => {
   try {
     c = istemci(h); await c.connect();
     const list = await c.list(); await c.logout();
-    const yol = list.filter(m => !(m.flags && m.flags.has('\\Noselect')))
-      .map(m => ({ yol: m.path, ad: m.name, ozel: (m.specialUse || '').replace(/\\/g, '') }));
-    return { liste: yol };
+    return { liste: list.filter(m => !(m.flags && m.flags.has('\\Noselect')))
+      .map(m => ({ yol: m.path, ad: m.name, ozel: (m.specialUse || '').replace(/\\/g, '') })) };
   } catch (e) { try { if (c) await c.close(); } catch {} return { hata: cevir(e) }; }
 });
 
 ipcMain.handle('gelenler', async (_e, id, klasor = 'INBOX', limit = 50) => {
   const h = bul(id); if (!h) return { hata: 'Hesap yok' };
-  let c;
   try {
-    c = istemci(h); await c.connect();
-    const lock = await c.getMailboxLock(klasor);
-    const out = [];
-    try {
-      const total = c.mailbox.exists || 0;
+    return await ileKlasor(h, klasor, async c => {
+      const out = []; const total = c.mailbox.exists || 0;
       if (total > 0) {
         const bas = Math.max(1, total - limit + 1);
         for await (const msg of c.fetch(`${bas}:*`, { uid: true, envelope: true, flags: true })) {
           const f = msg.envelope.from && msg.envelope.from[0];
           out.push({ uid: msg.uid, konu: msg.envelope.subject || '(konu yok)',
-            kimden: f ? (f.name || f.address) : '', adres: f ? f.address : '',
-            tarih: msg.envelope.date, okundu: msg.flags ? msg.flags.has('\\Seen') : true });
+            kimden: f ? (f.name || f.address) : '', adres: f ? f.address : '', tarih: msg.envelope.date,
+            okundu: msg.flags ? msg.flags.has('\\Seen') : true, yildiz: msg.flags ? msg.flags.has('\\Flagged') : false });
         }
       }
-    } finally { lock.release(); }
-    await c.logout();
-    return { liste: out.reverse() };
-  } catch (e) { try { if (c) await c.close(); } catch {} return { hata: cevir(e) }; }
+      return { liste: out.reverse() };
+    });
+  } catch (e) { return { hata: cevir(e) }; }
 });
 
 ipcMain.handle('mesaj', async (_e, id, klasor, uid) => {
   const h = bul(id); if (!h) return { hata: 'Hesap yok' };
-  let c;
   try {
-    c = istemci(h); await c.connect();
-    const lock = await c.getMailboxLock(klasor || 'INBOX');
-    let r;
-    try {
+    return await ileKlasor(h, klasor, async c => {
       const msg = await c.fetchOne(uid, { source: true }, { uid: true });
       const p = await simpleParser(msg.source);
-      r = { konu: p.subject || '(konu yok)', kimden: p.from ? p.from.text : '', kimdenAdres: p.from && p.from.value && p.from.value[0] ? p.from.value[0].address : '',
-        kime: p.to ? p.to.text : '', tarih: p.date, html: p.html || null, metin: p.text || '',
-        messageId: p.messageId || '', references: (p.references ? (Array.isArray(p.references) ? p.references.join(' ') : p.references) : '') };
       try { await c.messageFlagsAdd(uid, ['\\Seen'], { uid: true }); } catch {}
-    } finally { lock.release(); }
-    await c.logout();
-    return r;
-  } catch (e) { try { if (c) await c.close(); } catch {} return { hata: cevir(e) }; }
+      return { konu: p.subject || '(konu yok)', kimden: p.from ? p.from.text : '',
+        kimdenAdres: p.from && p.from.value && p.from.value[0] ? p.from.value[0].address : '',
+        kime: p.to ? p.to.text : '', tarih: p.date, html: p.html || null, metin: p.text || '',
+        messageId: p.messageId || '', references: (p.references ? (Array.isArray(p.references) ? p.references.join(' ') : p.references) : ''),
+        ekler: (p.attachments || []).map((a, i) => ({ i, ad: a.filename || ('ek-' + (i + 1)), boyut: a.size || (a.content ? a.content.length : 0), tur: a.contentType || '' })) };
+    });
+  } catch (e) { return { hata: cevir(e) }; }
+});
+
+ipcMain.handle('ek-indir', async (_e, id, klasor, uid, idx) => {
+  const h = bul(id); if (!h) return { hata: 'Hesap yok' };
+  try {
+    const att = await ileKlasor(h, klasor, async c => {
+      const msg = await c.fetchOne(uid, { source: true }, { uid: true });
+      const p = await simpleParser(msg.source);
+      return (p.attachments || [])[idx];
+    });
+    if (!att) return { hata: 'Ek bulunamadı' };
+    const r = await dialog.showSaveDialog(win, { defaultPath: att.filename || ('ek-' + (idx + 1)) });
+    if (r.canceled || !r.filePath) return { iptal: true };
+    fs.writeFileSync(r.filePath, att.content);
+    return { ok: true, yol: r.filePath };
+  } catch (e) { return { hata: cevir(e) }; }
+});
+
+ipcMain.handle('dosya-sec', async () => {
+  const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'] });
+  return r.canceled ? [] : r.filePaths;
 });
 
 ipcMain.handle('gonder', async (_e, id, m) => {
@@ -109,7 +126,24 @@ ipcMain.handle('gonder', async (_e, id, m) => {
   try {
     const t = tasiyici(h);
     await t.sendMail({ from: { name: h.ad || h.eposta, address: h.eposta }, to: m.kime, subject: m.konu,
-      text: m.metin || '', inReplyTo: m.inReplyTo || undefined, references: m.references || undefined });
+      text: m.metin || '', inReplyTo: m.inReplyTo || undefined, references: m.references || undefined,
+      attachments: (m.ekYollar || []).map(p => ({ path: p })) });
+    return { ok: true };
+  } catch (e) { return { hata: cevir(e) }; }
+});
+
+ipcMain.handle('isle', async (_e, id, klasor, uid, eylem, ekstra = {}) => {
+  const h = bul(id); if (!h) return { hata: 'Hesap yok' };
+  try {
+    await ileKlasor(h, klasor, async c => {
+      if (eylem === 'sil') {
+        if (ekstra.copYol && ekstra.copYol !== klasor) await c.messageMove(uid, ekstra.copYol, { uid: true });
+        else await c.messageDelete(uid, { uid: true });
+      } else if (eylem === 'okundu') await c.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
+      else if (eylem === 'okunmadi') await c.messageFlagsRemove(uid, ['\\Seen'], { uid: true });
+      else if (eylem === 'yildiz') await c.messageFlagsAdd(uid, ['\\Flagged'], { uid: true });
+      else if (eylem === 'yildizKaldir') await c.messageFlagsRemove(uid, ['\\Flagged'], { uid: true });
+    });
     return { ok: true };
   } catch (e) { return { hata: cevir(e) }; }
 });

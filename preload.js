@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('imapi', {
   klasorler: (id) => ipcRenderer.invoke('klasorler', id),
   gelenler: (id, klasor, limit) => ipcRenderer.invoke('gelenler', id, klasor, limit),
   mesaj: (id, klasor, uid) => ipcRenderer.invoke('mesaj', id, klasor, uid),
-  gonder: (id, mesaj) => ipcRenderer.invoke('gonder', id, mesaj)
+  ekIndir: (id, klasor, uid, idx) => ipcRenderer.invoke('ek-indir', id, klasor, uid, idx),
+  dosyaSec: () => ipcRenderer.invoke('dosya-sec'),
+  gonder: (id, mesaj) => ipcRenderer.invoke('gonder', id, mesaj),
+  isle: (id, klasor, uid, eylem, ekstra) => ipcRenderer.invoke('isle', id, klasor, uid, eylem, ekstra)
 });
 contextBridge.exposeInMainWorld('suhaDesktop', true);

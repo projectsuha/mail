@@ -82,3 +82,16 @@ button{font:inherit;cursor:pointer}
 .btn.sm{flex:none;padding:7px 14px;border-radius:6px;border:1px solid rgba(0,0,0,.08);border-bottom-color:rgba(0,0,0,.16);background:#fbfbfb;color:var(--fg);font-weight:600;font-size:13.5px}
 .btn.sm:hover{background:#f2f2f2}
 .kutu textarea:focus{outline:0;border-color:var(--acc)}
+
+/* Aşama 3: arama, yıldız, ek dosya */
+.arasat{padding:6px 10px;border-bottom:1px solid var(--line)}
+.arasat input{width:100%;padding:8px 11px;border:1px solid var(--line);border-bottom:1.6px solid rgba(0,0,0,.3);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;font-size:13.5px;outline:0}
+.arasat input:focus{border-bottom-color:var(--acc)}
+.satir .yil{color:#e0a800;margin-right:5px}
+.ekler{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}
+.ek{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);border-radius:8px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer}
+.ek:hover{border-color:var(--acc);background:var(--acc-soft)}
+.ek i{font-style:normal;color:var(--fg3);font-size:12px}
+.ek.indi{border-color:#2e9e52;color:#2e9e52}
+.ekcubuk{display:flex;align-items:center;gap:10px;margin-top:12px}
+.ekcubuk .not{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
